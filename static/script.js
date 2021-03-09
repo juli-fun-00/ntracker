@@ -1,23 +1,4 @@
-// function dataURItoBlob(dataURI) {
-//   // convert base64/URLEncoded data component to raw binary data held in a string
-//   var byteString;
-//   if (dataURI.split(",")[0].indexOf("base64") >= 0)
-//     byteString = atob(dataURI.split(",")[1]);
-//   else byteString = unescape(dataURI.split(",")[1]);
-
-//   // separate out the mime component
-//   var mimeString = dataURI.split(",")[0].split(":")[1].split(";")[0];
-
-//   // write the bytes of the string to a typed array
-//   var ia = new Uint8Array(byteString.length);
-//   for (var i = 0; i < byteString.length; i++) {
-//     ia[i] = byteString.charCodeAt(i);
-//   }
-
-//   return new Blob([ia], { type: mimeString });
-// }
-
-
+// функция генерирует рандомный id
 function uuidv4() {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
         var r = (Math.random() * 16) | 0,
@@ -26,80 +7,101 @@ function uuidv4() {
     });
 }
 
-function uploadFile(name, contents) {
-    console.log(`Uploading ${name}`);
-    const token = "AgAAAAAhlmtfAAbp9UGV53wjhkpFrRWqMUzszeQ";
-    const uploadFolder = `disk:/Приложения/N-tracker/`;
-    const requestUrl = `https://cloud-api.yandex.net/v1/disk/resources/upload?path=${encodeURI(
-        uploadFolder + name
-    )}`;
 
-    fetch(requestUrl, {
-        headers: {
-            Authorization: `OAuth ${token}`,
-        },
-    })
-        .then((response) => response.json())
-        .then((result) => {
-            console.log(result);
-            fetch(result.href, {
-                method: "PUT",
-                body: contents,
-            }).then((response) => console.log(response));
-        });
+// функция отправляет uuid и точки, ожидает и отображает картинку
+async function getFace(uuid, imageBlob, points) {
+    console.log("sending " + uuid + " and waiting for the pic")
+    let formData = new FormData();
+    formData.set("image", imageBlob, uuid + ".png");
+    formData.set("points", JSON.stringify({points: points}))
+    let response = await fetch("/face?uuid=" + uuid, {
+        method: 'POST',
+        body: formData
+    });
+
+    let result = await response.json()
+    document.querySelector("#screenshot img").src = 'data:image/png;base64,' + result["encoded_image"];
+}
+
+
+function extractPoints(recData) {
+    console.log("extracting points from ", recData)
+    let points = [[1, 2], [3, 4]];
+    for (const key in recData) {
+        console.log("key form recdata: ", key, " : ", recData[key])
+    }
+    return points
 }
 
 $(() => {
     const record_start = document.querySelector("#record_start");
-    // const record_stop = document.querySelector("#record_stop");
     const video = document.querySelector("video");
     const canvas = document.createElement("canvas");
     const img = document.querySelector("#screenshot img");
     const recording = document.querySelector("#recording");
 
+    // useful callbacks
+    GazeCloudAPI.OnCamDenied = function () {
+        console.log('camera access denied')
+    }
+
+    GazeCloudAPI.OnError = function (msg) {
+        console.log('err: ' + msg)
+    }
+
+    // hide on page laod
+    $(img).hide();
+    $(recording).hide();
+
     function stop() {
         GazeRecorderAPI.StopRec();
         GazeCloudAPI.StopEyeTracking();
         $(recording).hide();
+
+        // upload
         const id = uuidv4();
-        // uploadFile(`${id}.png`, dataURItoBlob(img.src));
-        canvas.toBlob((blob) => console.log(blob));
-        canvas.toBlob((blob) => uploadFile(`${id}.png`, blob));
-        uploadFile(`${id}.json`, GazeRecorderAPI.GetRecData());
-        GazePlayer.SetCountainer(document.getElementById("id"));
         const sessionReplayData = GazeRecorderAPI.GetRecData();
-        console.log("gazeevents: ", sessionReplayData.gazeevents);
-        console.log("webevents: ", sessionReplayData.webevents);
-        // GazePlayer.PlayResultsData(sessionReplayData  );
+
+        canvas.toBlob((blob) => getFace(id, blob, extractPoints(sessionReplayData.gazeevents)))
+
+        // GazePlayer.SetCountainer(document.getElementById("id"));
     }
 
     function start() {
-        GazeCloudAPI.StartEyeTracking();
-        GazeCloudAPI.OnCalibrationComplete = () => {
-            GazeRecorderAPI.Rec();
-            $(recording).show();
-            setTimeout(stop, 10000);
-        };
+        // GazeCloudAPI.StartEyeTracking();
+        // GazeCloudAPI.OnCalibrationComplete = () => {
+        //  console.log(‘Calibration Complete’)
+        // };
+        GazeRecorderAPI.Rec();
+        $(recording).show();
+        setTimeout(stop, 1000);
     }
 
     const constraints = {
         video: true
     };
 
-    $(img).hide();
-    $(recording).hide();
-
     navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
         video.srcObject = stream;
     });
 
+
+    // onclick listeners
+    document.addEventListener('keydown', event => {
+        if (event.code === 'Enter') {
+            let isRecording = $(recording).visible
+            if (!isRecording) {
+                start()
+            } else {
+                stop()
+            }
+
+        }
+    })
+
     record_start.onclick = () => {
         start()
     };
-
-    // record_stop.onclick = () => {
-    //     stop()
-    // };
 
     video.onclick = () => {
         canvas.width = video.videoWidth;
