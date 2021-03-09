@@ -18,7 +18,6 @@ from io import BytesIO
 SAVE_FOLDER = ""
 YADISK_FOLDER = ""
 
-
 # fastapi
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
@@ -39,14 +38,17 @@ def upload(source, destination) -> None:
 
 
 def process(img):
+    """Здесь нейронка вызывается и получаем картинку"""
     return img
 
 
 def calculate_center(points: List[List[int]]):
+    """Находим центр масс всех точек, смотрим концентрацию взгляда"""
     pass
 
 
-def classify(center: int):
+def classify(center: int) -> str:
+    """Классицифруем, возможные исходы: top_left, top_right, bottom_left, bottom_right"""
     pass
 
 
@@ -63,13 +65,13 @@ async def points_process(points: List[List[int]] = Body(...)):
     return {"received points": points}
 
 
-
 @app.post("/face")
 async def face_process(uuid: str, image: UploadFile = File(...), points: str = Body(...)):
     """points: {"points": [[1,2,3],[4,5,6]]}"""
     # image = face_data.image
     # uuid = face_data.uuid
-    points = json.loads(points)['points']
+    received_points = points
+    points = json.loads(received_points)['points']
     print(f"Received uuid: {uuid} --- points: {[points]}")
 
     remote_img_path = YADISK_FOLDER + os.sep + uuid + ".png"
@@ -78,12 +80,15 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
     remote_json_path = YADISK_FOLDER + os.sep + uuid + ".json"
     local_json_path = SAVE_FOLDER + os.sep + uuid + ".json"
 
+    # читаем картинку
     contents = await image.read()
     nparr = np.fromstring(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+    #  обрабатываем
     img = process(img)
 
+    # отправляем в виде закодированной строки
     _, encoded_img = cv2.imencode('.PNG', img)
     encoded_img = base64.b64encode(encoded_img)
     return {"encoded_image": encoded_img}

@@ -25,11 +25,14 @@ async function getFace(uuid, imageBlob, points) {
 
 
 function extractPoints(recData) {
-    console.log("extracting points from ", recData)
-    let points = [[1, 2], [3, 4]];
+    console.log("extracting points from recorded data of length ", recData.length)
+    let points = [];
     for (const key in recData) {
-        console.log("key form recdata: ", key, " : ", recData[key])
+        if (recData.hasOwnProperty(key)) {
+            points.push([recData[key]["docX"], recData[key]["docY"]])
+        }
     }
+    // console.log("extracted points: ", points)
     return points
 }
 
@@ -39,42 +42,52 @@ $(() => {
     const canvas = document.createElement("canvas");
     const img = document.querySelector("#screenshot img");
     const recording = document.querySelector("#recording");
-
+    let isCalibrating = false
+    let calibratingButtonPressed = true;
+    // GazeCloudAPI.UseClickRecalibration = true;
     // useful callbacks
     GazeCloudAPI.OnCamDenied = function () {
+        //maybe alert would be better
         console.log('camera access denied')
     }
-
     GazeCloudAPI.OnError = function (msg) {
         console.log('err: ' + msg)
     }
+    // GazeCloudAPI.OnResult = (result) => {
+    //     console.log("OnResult invoked, result: ", result)
+    // }
 
-    // hide on page laod
+    // hide on page load
     $(img).hide();
     $(recording).hide();
 
     function stop() {
+        console.log("STOP function")
         GazeRecorderAPI.StopRec();
         GazeCloudAPI.StopEyeTracking();
+        isCalibrating = false;
         $(recording).hide();
-
         // upload
         const id = uuidv4();
         const sessionReplayData = GazeRecorderAPI.GetRecData();
 
         canvas.toBlob((blob) => getFace(id, blob, extractPoints(sessionReplayData.gazeevents)))
 
-        // GazePlayer.SetCountainer(document.getElementById("id"));
+        // GazePlayer.SetContainer(document.getElementById("id"));
     }
 
     function start() {
-        // GazeCloudAPI.StartEyeTracking();
-        // GazeCloudAPI.OnCalibrationComplete = () => {
-        //  console.log(‘Calibration Complete’)
-        // };
-        GazeRecorderAPI.Rec();
-        $(recording).show();
-        setTimeout(stop, 1000);
+        console.log("START function")
+        isCalibrating = true
+        GazeCloudAPI.StartEyeTracking();
+
+        GazeCloudAPI.OnCalibrationComplete = () => {
+            console.log('Calibration Complete')
+            GazeRecorderAPI.Rec();
+            $(recording).show();
+            setTimeout(stop, 1000);
+        };
+
     }
 
     const constraints = {
@@ -89,13 +102,16 @@ $(() => {
     // onclick listeners
     document.addEventListener('keydown', event => {
         if (event.code === 'Enter') {
-            let isRecording = $(recording).visible
-            if (!isRecording) {
+            if (!isCalibrating) {
+                console.log("Click calibrating simulated")
+                calibratingButtonPressed = false;
                 start()
-            } else {
-                stop()
+            } else if (!calibratingButtonPressed) {
+                calibratingButtonPressed = true;
+                const startCalibratingButton = document.querySelector("#_ButtonCalibrateId");
+                startCalibratingButton.click()
+                console.log("Click button within calibrating simulated")
             }
-
         }
     })
 
