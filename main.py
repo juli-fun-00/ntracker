@@ -14,6 +14,7 @@ from typing import List
 # глобальные переменные, будут заполнены при парсинге в мейне
 SAVE_FOLDER = ""
 YADISK_FOLDER = ""
+YADISK_TOKEN = ""
 
 # fastapi
 templates = Jinja2Templates(directory="templates")
@@ -21,7 +22,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # yadisk
-my_disk = yadisk.YaDisk(token="AgAAAAAhlmtfAAbp9UGV53wjhkpFrRWqMUzszeQ")
+my_disk = None
 
 
 def download(source, destination) -> None:
@@ -94,7 +95,7 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
     print(f"--------------- New request -------------")
     input_points = points
     points = json.loads(input_points)['points']
-    print(f"Received uuid: , size of points {len(points)}")
+    print(f"Received uuid: {uuid}, size of points {len(points)}")
 
     # классицифируем
     class_type = classify(calculate_center(points))
@@ -191,7 +192,7 @@ def make_folders():
 
 
 def parse_args():
-    global SAVE_FOLDER, YADISK_FOLDER
+    global SAVE_FOLDER, YADISK_FOLDER, YADISK_TOKEN
 
     parser = argparse.ArgumentParser()
 
@@ -199,10 +200,13 @@ def parse_args():
                         help="path folder where we download data from yadisk")
     parser.add_argument("--YADISK_FOLDER", default="disk:/Приложения/N-tracker", type=str,
                         help="path folder where we download data from yadisk")
+    parser.add_argument("--YADISK_TOKEN", default="", type=str,
+                        help="token to work with yadisk")
 
     args = parser.parse_args()
     SAVE_FOLDER = args.SAVE_FOLDER
     YADISK_FOLDER = args.YADISK_FOLDER
+    YADISK_TOKEN = args.YADISK_TOKEN
 
     if SAVE_FOLDER[-1] == '/':
         SAVE_FOLDER = SAVE_FOLDER[:-1]
@@ -216,10 +220,17 @@ def parse_args():
 
 if __name__ == "__main__":
     print("Program started")
+    # парсим аргументы
     parse_args()
+
+    # коннектимся к диске
+    my_disk = yadisk.YaDisk(token=YADISK_TOKEN)
+
+    # создаем папки локально и на ядиске
     make_folders()
     if not os.path.exists(SAVE_FOLDER):
         os.makedirs(SAVE_FOLDER, exist_ok=True)
         print(f"Create path {SAVE_FOLDER} because it didn't exist")
 
+    # запускаем сервер
     uvicorn.run(app)
