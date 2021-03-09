@@ -31,7 +31,7 @@ def download(source, destination) -> None:
 
 def upload(source, destination) -> None:
     print(f"Uploading source: '{source}' to '{destination}' ...")
-    my_disk.upload(source, destination)
+    my_disk.upload(source, destination, overwrite=True)
 
 
 def process(old_img, new_img):
@@ -62,8 +62,8 @@ def classify(center: List[int]) -> str:
     x_half = 1920 // 2
     y_half = 1080 // 2
     class_type = "bottom_right"
-    x = center[0]
-    y = center[1]
+    y = center[0]
+    x = center[1]
     if x < x_half and y < y_half:
         class_type = "top_left"
     elif x < x_half and y > y_half:
@@ -88,8 +88,8 @@ async def root(request: Request):
 @app.post("/face")
 async def face_process(uuid: str, image: UploadFile = File(...), points: str = Body(...)):
     """
-    Обрабатываем входящую картинку и хит-мапу в виде точек
-    формат points: {"points": [[1,2,3],[4,5,6]]}
+    Обрабатываем входящую картинку и хит-мапу в виде точек.
+    Формат для points: {"points": [[1,2,3],[4,5,6]]}. [[x,y], [x,y]...]
     """
     print(f"--------------- New request -------------")
     input_points = points
@@ -124,10 +124,11 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
     # сохраняем на yadisk входную картинку
     print("Saving input pic")
     success = cv2.imwrite(local_img_path, input_img)
-    if success:
-        upload(local_img_path, remote_img_path)
-    else:
+    if not success:
         print(f"ERROR on imwrite {local_img_path}")
+        raise Exception("bad imwrite happened")
+
+    upload(local_img_path, remote_img_path)
 
     # сохраняем на yadisk входные точки
     print("Saving input json-points")
@@ -137,15 +138,21 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
 
     # объединяем эти картинки нейронкой
     print("processing pictures with nn")
-    result_img = await process(old_img=same_class_img, new_img=input_img)
+    result_img = process(old_img=same_class_img, new_img=input_img)
 
     # сохраняем на yadisk картинку-результат
     print("saving result-pic on yadisk")
     cv2.imwrite(local_last_same_img_path, result_img)
-    if success:
-        upload(local_last_same_img_path, remote_last_same_img_path)
-    else:
+    if not success:
         print(f"ERROR on imwrite {local_last_same_img_path}")
+        raise Exception("bad imwrite happened")
+
+    upload(local_last_same_img_path, remote_last_same_img_path)
+
+    # удаляем локальные файлы
+    os.remove(local_last_same_img_path)
+    os.remove(local_img_path)
+    os.remove(local_json_path)
 
     # отправляем картинку-результат в виде закодированной строки на фронт
     print("sending result pic to front")
@@ -155,24 +162,32 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
 
 
 def yadisk_mkdir(path: str) -> None:
-    try:
-        my_disk.mkdir(path)
-    except ...:
-        pass
+    if not my_disk.exists(path):
+        try:
+            my_disk.mkdir(path)
+            print(f"folder {path} created on yadisk because it was not exists")
+        except Exception:
+            pass
+
+
+def local_mkdir(path: str) -> None:
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+        print(f"folder {path} created on locally because it was not exists")
 
 
 def make_folders():
     # локально
-    os.makedirs(SAVE_FOLDER + "top_left", exist_ok=True)
-    os.makedirs(SAVE_FOLDER + "top_right", exist_ok=True)
-    os.makedirs(SAVE_FOLDER + "bottom_left", exist_ok=True)
-    os.makedirs(SAVE_FOLDER + "bottom_left", exist_ok=True)
+    local_mkdir(SAVE_FOLDER + os.sep + "top_left")
+    local_mkdir(SAVE_FOLDER + os.sep + "top_right")
+    local_mkdir(SAVE_FOLDER + os.sep + "bottom_left")
+    local_mkdir(SAVE_FOLDER + os.sep + "bottom_right")
 
-    # на yadisk (более красивого способа не нашел)
-    yadisk_mkdir(YADISK_FOLDER + "top_left")
-    yadisk_mkdir(YADISK_FOLDER + "top_right")
-    yadisk_mkdir(YADISK_FOLDER + "bottom_left")
-    yadisk_mkdir(YADISK_FOLDER + "bottom_left")
+    # на yadisk
+    yadisk_mkdir(YADISK_FOLDER + os.sep + "top_left")
+    yadisk_mkdir(YADISK_FOLDER + os.sep + "top_right")
+    yadisk_mkdir(YADISK_FOLDER + os.sep + "bottom_left")
+    yadisk_mkdir(YADISK_FOLDER + os.sep + "bottom_right")
 
 
 def parse_args():
@@ -202,7 +217,7 @@ def parse_args():
 if __name__ == "__main__":
     print("Program started")
     parse_args()
-
+    make_folders()
     if not os.path.exists(SAVE_FOLDER):
         os.makedirs(SAVE_FOLDER, exist_ok=True)
         print(f"Create path {SAVE_FOLDER} because it didn't exist")
