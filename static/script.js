@@ -20,7 +20,9 @@ async function getFace(uuid, imageBlob, points) {
     });
 
     let result = await response.json()
-    document.querySelector("#screenshot img").src = 'data:image/png;base64,' + result["encoded_image"];
+    let img = document.querySelector("#screenshot img");
+    $(img).src = 'data:image/png;base64,' + result["encoded_image"];
+    $(img).show() // todo hide on start probably
 }
 
 
@@ -32,12 +34,10 @@ function extractPoints(recData) {
             points.push([recData[key]["docX"], recData[key]["docY"]])
         }
     }
-    // console.log("extracted points: ", points)
     return points
 }
 
 $(() => {
-    const record_start = document.querySelector("#record_start");
     const video = document.querySelector("video");
     const canvas = document.createElement("canvas");
     const img = document.querySelector("#screenshot img");
@@ -45,13 +45,15 @@ $(() => {
     let isCalibrating = false
     let calibratingButtonPressed = true;
     // GazeCloudAPI.UseClickRecalibration = true;
-    // useful callbacks
+
+    // RecorderAPI callbacks
     GazeCloudAPI.OnCamDenied = function () {
-        //maybe alert would be better
         console.log('camera access denied')
+        stop();
     }
     GazeCloudAPI.OnError = function (msg) {
         console.log('err: ' + msg)
+        stop();
     }
     // GazeCloudAPI.OnResult = (result) => {
     //     console.log("OnResult invoked, result: ", result)
@@ -61,19 +63,26 @@ $(() => {
     $(img).hide();
     $(recording).hide();
 
+    function upload(){
+        console.log("UPLOAD function");
+        const id = uuidv4();
+        const sessionReplayData = GazeRecorderAPI.GetRecData();
+
+        canvas.toBlob((blob) => getFace(id, blob, extractPoints(sessionReplayData.gazeevents)));
+    }
+
     function stop() {
-        console.log("STOP function")
+        console.log("STOP function");
         GazeRecorderAPI.StopRec();
         GazeCloudAPI.StopEyeTracking();
         isCalibrating = false;
         $(recording).hide();
-        // upload
-        const id = uuidv4();
-        const sessionReplayData = GazeRecorderAPI.GetRecData();
-
-        canvas.toBlob((blob) => getFace(id, blob, extractPoints(sessionReplayData.gazeevents)))
-
         // GazePlayer.SetContainer(document.getElementById("id"));
+    }
+
+    function stopAndUpload(){
+        stop();
+        upload();
     }
 
     function start() {
@@ -85,7 +94,7 @@ $(() => {
             console.log('Calibration Complete')
             GazeRecorderAPI.Rec();
             $(recording).show();
-            setTimeout(stop, 1000);
+            setTimeout(stopAndUpload, 1000);
         };
 
     }
@@ -114,10 +123,6 @@ $(() => {
             }
         }
     })
-
-    record_start.onclick = () => {
-        start()
-    };
 
     video.onclick = () => {
         canvas.width = video.videoWidth;

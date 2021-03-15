@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from typing import List
 
-# глобальные переменные, будут заполнены при парсинге в мейне
+# глобальные переменные, будут заполнены при парсинге в parse_args
 SAVE_FOLDER = ""
 YADISK_FOLDER = ""
 YADISK_TOKEN = ""
@@ -124,8 +124,7 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
 
     # сохраняем на yadisk входную картинку
     print("Saving input pic")
-    success = cv2.imwrite(local_img_path, input_img)
-    if not success:
+    if not cv2.imwrite(local_img_path, input_img):
         print(f"ERROR on imwrite {local_img_path}")
         raise Exception("bad imwrite happened")
 
@@ -143,8 +142,7 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
 
     # сохраняем на yadisk картинку-результат
     print("saving result-pic on yadisk")
-    cv2.imwrite(local_last_same_img_path, result_img)
-    if not success:
+    if not cv2.imwrite(local_last_same_img_path, result_img):
         print(f"ERROR on imwrite {local_last_same_img_path}")
         raise Exception("bad imwrite happened")
 
@@ -167,7 +165,7 @@ def yadisk_mkdir(path: str) -> None:
         try:
             my_disk.mkdir(path)
             print(f"folder {path} created on yadisk because it was not exists")
-        except Exception:
+        except:
             pass
 
 
