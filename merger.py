@@ -25,7 +25,7 @@ def merge(a, b, babygun_path, savefolder, uuid):
                     f"{merge_folder}/latent_representations"
     utils.execute(command=command_merge, workdir=babygun_path)
 
-    result = cv2.imread('merge_folder/latent_representations')
+    result = cv2.imread(f'{merge_folder}/generated_images/a_01.png')
 
     return result
 
@@ -47,4 +47,6 @@ if __name__ == "__main__":
     result = merge(a, b, BABYGUN, '/opt/savefolder', "test_uuid")
     if result is not None:
         cv2.imwrite(test_prefix + "result.png", result)
+    else:
+        print("NOT CORRECT picture received from merge")
     print("Done, saved")
