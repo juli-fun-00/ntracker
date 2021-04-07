@@ -6,7 +6,9 @@ cachetools==4.2.1
 certifi==2020.12.5
 chardet==4.0.0
 click==7.1.2
+cmake==3.18.4.post1
 dataclasses==0.8
+dlib-bin==19.21.0
 fastapi==0.63.0
 flatbuffers==1.12
 gast==0.2.2
