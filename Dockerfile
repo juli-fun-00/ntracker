@@ -31,6 +31,7 @@ RUN pip install -r /opt/ntracker/requirements.txt
 COPY static     /opt/ntracker/static
 COPY templates  /opt/ntracker/templates
 COPY main.py    /opt/ntracker/main.py
+COPY utils.py    /opt/ntracker/utils.py
 COPY merger.py  /opt/ntracker/merger.py
 
 # set runnable

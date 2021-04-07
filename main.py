@@ -172,10 +172,7 @@ def yadisk_mkdir(path: str) -> None:
             pass
 
 
-def local_mkdir(path: str) -> None:
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-        print(f"folder {path} created on locally because it was not exists")
+
 
 
 def make_folders():
