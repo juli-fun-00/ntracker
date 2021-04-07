@@ -18,8 +18,25 @@ SAVE_FOLDER = ""
 YADISK_FOLDER = ""
 YADISK_TOKEN = ""
 CLASSES = ["ambient", "scanner"]
-CLASS_MESSAGES = {"ambient": ["ambient_msg1", "ambient_msg2", "ambient_msg3"],
-                  "scanner": ["scanner_msg1", "scanner_msg2", "scanner_msg3"]}
+CLASS_MESSAGES = {
+    "ambient": [
+        # 1
+        "Сейчас ваше восприятие склонно к амбъентному типу. Что это значит? Взгляд настроен воспринимать лицо как "
+        "единое целое, а не составные части. Такой тип обеспечивает быстрое распознование базовых эмоций человека.",
+        # 2
+        "Ваш способ восприятия лиц на данный момент — синтетический. Особенно чутко вы сейчас сможете распознать "
+        "выражения грусти, гнева, удивления и радости. Именно этот способ присущ людям 70% времени"],
+
+    "scanner": [
+        # 1
+        "Ваш способ восприятия лиц на данный момент — аналитический. Особенно чутко вы сейчас сможете распознать "
+        "выражения удивления и отвращения.  Этот способ присущ людям всего 30% времени.",
+        # 2
+        "Сейчас ваше восприятие склонно к факальному типу. Что это значит? Взгляд настроен воспринимать лицо по "
+        "отдельным частям и только после этого составлять общую картинку. При взаимодействии с людьми у вас "
+        "включается аналитический способ межличностного восприятия. "
+    ]
+}
 
 # fastapi
 templates = Jinja2Templates(directory="templates")
@@ -119,7 +136,6 @@ async def classify(uuid: str, points: str = Body(...)):
         file.write(input_points)
     upload(local_points_path, remote_points_path)
 
-
     # удаляем локальные файлы относящиеся к этому запросу
     # os.remove(SAVE_FOLDER + os.sep + uuid)
     #
@@ -129,7 +145,7 @@ async def classify(uuid: str, points: str = Body(...)):
 
 
 @app.post("/face")
-async def face_process(uuid: str, image: UploadFile = File(...), points: str = Body(...)):
+async def face_process(uuid: str, image: UploadFile = File(...)):
     """
     Обрабатываем входящую картинку и хит-мапу в виде точек.
 

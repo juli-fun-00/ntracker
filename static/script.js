@@ -10,52 +10,44 @@ function uuidv4() {
 
 // функция отправляет uuid и точки, ожидает и отображает картинку
 async function classify_request(uuid, points) {
-    console.log("classify_request ", uuid)
+    console.log("CLASSIFY request started", uuid)
 
     let formData = new FormData();
-    formData.set("image", imageBlob, uuid + ".png");
     formData.set("points", JSON.stringify({points: points}))
-    let response = await fetch("/face?uuid=" + uuid, {
+    let response = await fetch("/classify?uuid=" + uuid, {
         method: 'POST',
         body: formData
     });
 
     let result = await response.json()
-    let img = document.querySelector("#screenshot img");
-    let text = document.querySelector("#person-class");
-
     console.log("User class is ", result['class'])
 
+    let text = document.querySelector("#person-class");
     text.innerHTML = result['class']
-    img.src = 'data:image/png;base64,' + result["encoded_image"];
 
-    $(img).show()
     $(text).show()
+    console.log("CLASSIFY request finished", uuid)
 }
 
 // функция отправляет uuid и точки, ожидает и отображает картинку
-async function face_request(uuid, imageBlob, points) {
-    console.log("face_request ", uuid)
+async function face_request(uuid, imageBlob) {
+    console.log("FACE request started", uuid)
 
     let formData = new FormData();
     formData.set("image", imageBlob, uuid + ".png");
-    formData.set("points", JSON.stringify({points: points}))
+    // formData.set("points", JSON.stringify({points: points}))
     let response = await fetch("/face?uuid=" + uuid, {
         method: 'POST',
         body: formData
     });
 
     let result = await response.json()
+
     let img = document.querySelector("#screenshot img");
-    let text = document.querySelector("#person-class");
-
-    console.log("User class is ", result['class'])
-
-    text.innerHTML = result['class']
     img.src = 'data:image/png;base64,' + result["encoded_image"];
 
     $(img).show()
-    $(text).show()
+    console.log("FACE  request finished", uuid)
 }
 
 
@@ -79,21 +71,25 @@ function setPhotoWhileRecordingFromBlob(blob) {
 
 
 $(() => {
+    // GLOBALS
+    let current_id;
+    let face_result;
+
     const video = document.querySelector("video");
     const canvas = document.createElement("canvas");
     const img = document.querySelector("#screenshot img");
     const text = document.querySelector("#person-class");
-    const recording = document.querySelector("#recording");
+    const recording_symbol = document.querySelector("#recording");
     let isCalibrating = false
     let calibratingButtonPressed = true;
 
     GazeCloudAPI.OnCamDenied = function () {
         console.log('camera access denied')
-        stop();
+        stop_recording();
     }
     GazeCloudAPI.OnError = function (msg) {
         console.log('err: ' + msg)
-        stop();
+        stop_recording();
     }
     // GazeCloudAPI.OnResult = (gazeData) => {
     //     let x = gazeData.docX
@@ -104,48 +100,42 @@ $(() => {
 
     // hide on page load
     $(img).hide();
-    $(recording).hide();
+    $(recording_symbol).hide();
     $(text).hide()
+    $(video).hide();
 
-    function getVideoScreenshotUrl() {
+    function drawCameraFrameOnCanvas() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0);
-        return canvas.toDataURL("image/png");
     }
 
-    function upload() {
-        console.log("UPLOAD function");
-        const id = uuidv4();
-        const sessionReplayData = GazeRecorderAPI.GetRecData();
-
-        img.src = getVideoScreenshotUrl()
-        canvas.toBlob((blob) => face_request(id, blob, extractPoints(sessionReplayData.gazeevents)));
-    }
-
-    function stop() {
-        console.log("STOP function");
+    function stop_recording() {
+        console.log("Recording STOP........")
         GazeRecorderAPI.StopRec();
         GazeCloudAPI.StopEyeTracking();
-        console.log("Recording STOP........")
         isCalibrating = false;
-        $(recording).hide();
-        // GazePlayer.SetContainer(document.getElementById("id"));
+        $(recording_symbol).hide();
     }
 
     function stopAndUpload() {
         console.log("stopAndUpload")
-        stop();
-        upload();
+        stop_recording();
+
+        // отправяем classify запрос
+        const sessionReplayData = GazeRecorderAPI.GetRecData();
+        classify_request(id, extractPoints(sessionReplayData.gazeevents))
     }
 
     function calibCompleteActions() {
         console.log('Calibration Complete')
+
+        // Результат нейронки отображаем пользователю
         $(img).show();
-        $(recording).show();
-        $(video).hide();
+
 
         console.log("Recording START........")
+        $(recording_symbol).show();
         GazeRecorderAPI.Rec();
         setTimeout(stopAndUpload, 5000);
     }
@@ -153,16 +143,21 @@ $(() => {
     function start() {
         console.log("START function")
         isCalibrating = true
+        current_id = uuidv4()
+        console.log("current uuid: ", current_id)
 
         $(text).hide()
         $(img).hide();
-        $(recording).hide();
-        $(video).show();
+        $(recording_symbol).hide();
 
         // GazeCloudAPI.StartEyeTracking();
         // GazeCloudAPI.OnCalibrationComplete = () => {
         //     calibCompleteActions()
         // };
+
+        // send user picture
+        drawCameraFrameOnCanvas()
+        canvas.toBlob((blob) => face_request(id, blob));
 
         calibCompleteActions()
     }
@@ -184,9 +179,9 @@ $(() => {
                 calibratingButtonPressed = false;
                 start()
             } else if (!calibratingButtonPressed) {
-                calibratingButtonPressed = true;
                 const startCalibratingButton = document.querySelector("#_ButtonCalibrateId");
                 startCalibratingButton.click()
+                calibratingButtonPressed = true;
                 console.log("Click button within calibrating simulated")
             }
         }
