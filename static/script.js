@@ -19,14 +19,7 @@ async function classify_request(uuid, points) {
         body: formData
     });
 
-    let result = await response.json()
-    console.log("User class is ", result['class'])
-
-    let text = document.querySelector("#person-class");
-    text.innerHTML = result['class']
-
-    $(text).show()
-    console.log("CLASSIFY request finished", uuid)
+    return await response.json()
 }
 
 // функция отправляет uuid и точки, ожидает и отображает картинку
@@ -41,13 +34,7 @@ async function face_request(uuid, imageBlob) {
         body: formData
     });
 
-    let result = await response.json()
-
-    let img = document.querySelector("#screenshot img");
-    img.src = 'data:image/png;base64,' + result["encoded_image"];
-
-    $(img).show()
-    console.log("FACE  request finished", uuid)
+    return await response.json()
 }
 
 
@@ -74,6 +61,7 @@ $(() => {
     // GLOBALS
     let current_id;
     let face_result;
+    let user_photo
 
     const video = document.querySelector("video");
     const canvas = document.createElement("canvas");
@@ -124,23 +112,38 @@ $(() => {
 
         // отправяем classify запрос
         const sessionReplayData = GazeRecorderAPI.GetRecData();
-        classify_request(id, extractPoints(sessionReplayData.gazeevents))
+        classify_request(id, extractPoints(sessionReplayData.gazeevents)).then(
+            (result) => {
+                console.log("User class is ", result['class'])
+
+                let text = document.querySelector("#person-class");
+                text.innerHTML = result['class']
+
+                $(text).show()
+                console.log("CLASSIFY request succeed", id)
+            },
+            () => {
+                console.log("--------- CLASSIFY request failed")
+            }
+        )
     }
 
-    function calibCompleteActions() {
-        console.log('Calibration Complete')
+    function calibCompleteActions(face_promise) {
+        console.log('calibCompleteActions function')
+        face_promise.then(() => {
+            console.log("face_promise.then сработал")
+            // результат нейронки отображаем пользователю
+            $(img).show();
 
-        // Результат нейронки отображаем пользователю
-        $(img).show();
-
-
-        console.log("Recording START........")
-        $(recording_symbol).show();
-        GazeRecorderAPI.Rec();
-        setTimeout(stopAndUpload, 5000);
+            // начинаем запись
+            console.log("Recording START........")
+            $(recording_symbol).show();
+            GazeRecorderAPI.Rec();
+            setTimeout(stopAndUpload, 5000);
+        })
     }
 
-    function start() {
+    function start_calibrate() {
         console.log("START function")
         isCalibrating = true
         current_id = uuidv4()
@@ -150,14 +153,27 @@ $(() => {
         $(img).hide();
         $(recording_symbol).hide();
 
-        // GazeCloudAPI.StartEyeTracking();
+        // отправляем картинку пользователя на merge
+        drawCameraFrameOnCanvas()
+
+        canvas.toBlob((blob) => {
+            user_photo = blob
+        });
+
+        let face_request_promise = face_request(id, user_photo).then(
+            (result) => {
+                console.log("FACE request succeed", id)
+                let img = document.querySelector("#screenshot img");
+                img.src = 'data:image/png;base64,' + result["encoded_image"];
+            },
+            () => {
+                console.log("---------- FACE request failed")
+            });
+
+        // GazeCloudAPI.StartEyeTracking    ();
         // GazeCloudAPI.OnCalibrationComplete = () => {
         //     calibCompleteActions()
         // };
-
-        // send user picture
-        drawCameraFrameOnCanvas()
-        canvas.toBlob((blob) => face_request(id, blob));
 
         calibCompleteActions()
     }
@@ -177,7 +193,7 @@ $(() => {
             if (!isCalibrating) {
                 console.log("Click calibrating simulated")
                 calibratingButtonPressed = false;
-                start()
+                start_calibrate()
             } else if (!calibratingButtonPressed) {
                 const startCalibratingButton = document.querySelector("#_ButtonCalibrateId");
                 startCalibratingButton.click()
