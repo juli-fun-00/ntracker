@@ -6,17 +6,25 @@ import argparse
 import json
 import base64
 import numpy as np
-from fastapi import FastAPI, Request, UploadFile, File, Body
+from fastapi import FastAPI, Request, UploadFile, File, Body, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from typing import List
 import merger
 import utils
 
+from pydantic import BaseModel
+
+
+class Points(BaseModel):
+    points: List[int]
+
+
 # глобальные переменные, будут заполнены при парсинге в parse_args
 SAVE_FOLDER = ""
 YADISK_FOLDER = ""
 YADISK_TOKEN = ""
+BABYGUN_FOLDER = ""
 CLASSES = ["ambient", "scanner"]
 CLASS_MESSAGES = {
     "ambient": [
@@ -57,12 +65,13 @@ def upload(source, destination) -> None:
     my_disk.upload(source, destination, overwrite=True)
 
 
-def process(old_img, new_img):
+def process(old_img, new_img, uuid):
     """
     Принимаем 2 картинки, мерджим их с помощью нейронки, результат возвращаем
     """
-    merged_img = old_img
-    return merger.merge(old_img, new_img)
+    # TODO вернуть merger, пока для теста так оставим
+    return merger.merge(a=old_img, b=new_img, babygun_path=BABYGUN_FOLDER, savefolder=SAVE_FOLDER, uuid=uuid)
+    # return old_img
 
 
 def calculate_center(points: List[List[int]]) -> List[int]:
@@ -78,8 +87,7 @@ def calculate_center(points: List[List[int]]) -> List[int]:
 
 def classify(center: List[int]) -> str:
     """
-    Классифицифруем, возможные исходы: top_left, top_right, bottom_left, bottom_right
-    допустим что точки принимаю значения x - [0, 1920] y - [0, 1080]
+    Классифицифруем допустим что точки принимаю значения x - [0, 1920] y - [0, 1080]
     и начало отсчета в левом верхнем углу, луч x направлен вправо, луч y вниз
     """
     y = center[0]
@@ -96,59 +104,64 @@ async def root(request: Request):
     })
 
 
-@app.get("/test_face")
-async def root(request: Request):
-    pic = cv2.imread(SAVE_FOLDER + os.sep + "test_images/a.jpeg")
-    _, encoded_img = cv2.imencode('.PNG', pic)
-    encoded_img = base64.b64encode(encoded_img)
-    return {"encoded_image": encoded_img,
-            "class": CLASSES[0]}
+# @app.get("/test_face")
+# async def root(request: Request):
+#     pic = cv2.imread(SAVE_FOLDER + os.sep + "test_images/a.jpeg")
+#     _, encoded_img = cv2.imencode('.PNG', pic)
+#     encoded_img = base64.b64encode(encoded_img)
+#     return {"encoded_image": encoded_img,
+#             "class": CLASSES[0]}
 
+# , points: List[Points] = Form(...)
+@app.get("/classify")
+async def classify(uuid: str):
+    """
+    description
+    """
+    print(f"--------------- New request /classify -------------")
+    # print('points are', points)
+    # print('points type is', type(points))
 
-@app.post("/classify")
-async def classify(uuid: str, points: str = Body(...)):
-    """
-    Формат
-    для
-    points: {"points": [[1, 2, 3], [4, 5, 6]]}.[[x, y], [x, y]...]
-    """
-    input_points = points
-    points = json.loads(input_points)['points']
-    print(f"Received uuid: {uuid}")
+    class_type = CLASSES[0]
+
+    # загружаем сохранянную из /face запроса картинку на yadisk
+    remote_img_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".png"
+    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".png"
+    upload(local_img_path, remote_img_path)
+
+    return {"class": class_type,
+            "message": np.random.choice(CLASS_MESSAGES[class_type])}
+
+    points_json = json.loads(points)
+    points = points_json['points']
+    print(f"Received uuid: {uuid} and points len is {len(points)}")
 
     # классицифируем
-    class_type = classify(calculate_center(points))
+    class_type = await classify(calculate_center(points))
     print(f"Classified to type {class_type}")
 
     # пути
-    remote_img_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".png"
-    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".png"
 
     remote_points_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".json"
     local_points_path = SAVE_FOLDER + os.sep + uuid + os.sep + "points.json"
 
-    # загружаем сохранянную из /face запроса картинку на yadisk
-    upload(local_img_path, remote_img_path)
-
     # сохраняем на yadisk входные точки
     print("Saving input json-points")
     with open(local_points_path, "w+") as file:
-        file.write(input_points)
+        file.write(points_json)
     upload(local_points_path, remote_points_path)
 
     # удаляем локальные файлы относящиеся к этому запросу
-    # os.remove(SAVE_FOLDER + os.sep + uuid)
-    #
+    os.remove(SAVE_FOLDER + os.sep + uuid)
 
     return {"class": class_type,
-            "message": np.random.choice(CLASS_MESSAGES[class_type])}
+            "message": await np.random.choice(CLASS_MESSAGES[class_type])}
 
 
 @app.post("/face")
 async def face_process(uuid: str, image: UploadFile = File(...)):
     """
-    Обрабатываем входящую картинку и хит-мапу в виде точек.
-
+    Обрабатываем фото пользователя
     """
     print(f"--------------- New request /face -------------")
     print(f"Received uuid: {uuid}")
@@ -181,7 +194,7 @@ async def face_process(uuid: str, image: UploadFile = File(...)):
 
     # объединяем эти картинки нейронкой
     print("processing pictures with nn")
-    result_img = process(old_img=last_merged, new_img=input_img)
+    result_img = process(old_img=last_merged, new_img=input_img, uuid=uuid)
 
     # сохраняем на yadisk картинку-результат
     print("saving result-pic on yadisk")
@@ -214,7 +227,7 @@ def make_folders():
 
 
 def parse_args():
-    global SAVE_FOLDER, YADISK_FOLDER, YADISK_TOKEN
+    global SAVE_FOLDER, YADISK_FOLDER, YADISK_TOKEN, BABYGUN_FOLDER
 
     parser = argparse.ArgumentParser()
 
@@ -233,15 +246,18 @@ def parse_args():
     SAVE_FOLDER = args.SAVE_FOLDER
     YADISK_FOLDER = args.YADISK_FOLDER
     YADISK_TOKEN = args.YADISK_TOKEN
+    BABYGUN_FOLDER = args.BABYGUN_FOLDER
 
     if SAVE_FOLDER[-1] == '/':
         SAVE_FOLDER = SAVE_FOLDER[:-1]
-
     if YADISK_FOLDER[-1] == '/':
         YADISK_FOLDER = YADISK_FOLDER[:-1]
+    if BABYGUN_FOLDER[-1] == '/':
+        BABYGUN_FOLDER = BABYGUN_FOLDER[:-1]
 
     print(f"SAVE_FOLDER   is '{SAVE_FOLDER}'")
     print(f"YADISK_FOLDER is '{YADISK_FOLDER}'")
+    print(f"BABYGUN_FOLDER is '{BABYGUN_FOLDER}'")
 
 
 if __name__ == "__main__":

@@ -34,4 +34,4 @@ COPY merger.py    /opt/ntracker/merger.py
 
 # set runnable
 WORKDIR /opt/ntracker/
-ENTRYPOINT ["python", "merger.py"]
+ENTRYPOINT ["python", "main.py"]
