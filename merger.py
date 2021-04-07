@@ -26,7 +26,6 @@ def merge(a, b, babygun_path, savefolder, uuid):
     utils.execute(command=command_merge, workdir=babygun_path)
 
     result = cv2.imread(f'{merge_folder}/generated_images/a_01.png')
-
     return result
 
 
@@ -42,9 +41,9 @@ if __name__ == "__main__":
     BABYGUN = args.BABYGUN_FOLDER
 
     test_prefix = '/opt/savefolder/test_images/'
-    a = cv2.imread(test_prefix + "a.jpeg")
-    b = cv2.imread(test_prefix + "b.jpeg")
-    result = merge(a, b, BABYGUN, '/opt/savefolder', "test_uuid")
+    a_img = cv2.imread(test_prefix + "a.jpeg")
+    b_img = cv2.imread(test_prefix + "b.jpeg")
+    result = merge(a_img, b_img, BABYGUN, '/opt/savefolder', "test_uuid")
     if result is not None:
         cv2.imwrite(test_prefix + "result.png", result)
     else:
