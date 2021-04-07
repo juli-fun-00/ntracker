@@ -10,11 +10,13 @@ from fastapi import FastAPI, Request, UploadFile, File, Body
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from typing import List
+import merger
 
 # глобальные переменные, будут заполнены при парсинге в parse_args
 SAVE_FOLDER = ""
 YADISK_FOLDER = ""
 YADISK_TOKEN = ""
+CLASSES = ["ambient", "scanner"]
 
 # fastapi
 templates = Jinja2Templates(directory="templates")
@@ -37,10 +39,10 @@ def upload(source, destination) -> None:
 
 def process(old_img, new_img):
     """
-    Здесь нейронка вызывается и получаем картинку
+    Принимаем 2 картинки, мерджим их с помощью нейронки, результат возвращаем
     """
     merged_img = old_img
-    return merged_img
+    return merger.merge(old_img,new_img)
 
 
 def calculate_center(points: List[List[int]]) -> List[int]:
@@ -101,15 +103,18 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
     class_type = classify(calculate_center(points))
     print(f"Classified to type {class_type}")
 
+    # создаем папку, в которой будут храниться временные картинки для этого запроса
+    local_mkdir(SAVE_FOLDER + os.sep + uuid)
+
     # прописываем локальные и удаленные (которые на yadisk) пути
     remote_img_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".png"
-    local_img_path = SAVE_FOLDER + os.sep + class_type + os.sep + uuid + ".png"
+    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + class_type + os.sep + uuid + ".png"
 
     remote_json_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".json"
-    local_json_path = SAVE_FOLDER + os.sep + class_type + os.sep + uuid + ".json"
+    local_json_path = SAVE_FOLDER + os.sep + uuid + os.sep + class_type + os.sep + uuid + ".json"
 
     remote_last_same_img_path = YADISK_FOLDER + os.sep + "last_" + class_type + ".png"
-    local_last_same_img_path = SAVE_FOLDER + os.sep + "last_" + class_type + ".png"
+    local_last_same_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + "last_" + class_type + ".png"
 
     # достаем последнюю картинку такого же класса
     print("Getting the same class image from yadisk")
@@ -148,10 +153,8 @@ async def face_process(uuid: str, image: UploadFile = File(...), points: str = B
 
     upload(local_last_same_img_path, remote_last_same_img_path)
 
-    # удаляем локальные файлы
-    os.remove(local_last_same_img_path)
-    os.remove(local_img_path)
-    os.remove(local_json_path)
+    # удаляем локальные файлы относящиеся к этому запросу
+    os.remove(SAVE_FOLDER + os.sep + uuid)
 
     # отправляем картинку-результат в виде закодированной строки на фронт
     print("sending result pic to front")
@@ -176,17 +179,9 @@ def local_mkdir(path: str) -> None:
 
 
 def make_folders():
-    # локально
-    local_mkdir(SAVE_FOLDER + os.sep + "top_left")
-    local_mkdir(SAVE_FOLDER + os.sep + "top_right")
-    local_mkdir(SAVE_FOLDER + os.sep + "bottom_left")
-    local_mkdir(SAVE_FOLDER + os.sep + "bottom_right")
-
     # на yadisk
-    yadisk_mkdir(YADISK_FOLDER + os.sep + "top_left")
-    yadisk_mkdir(YADISK_FOLDER + os.sep + "top_right")
-    yadisk_mkdir(YADISK_FOLDER + os.sep + "bottom_left")
-    yadisk_mkdir(YADISK_FOLDER + os.sep + "bottom_right")
+    for cls in CLASSES:
+        yadisk_mkdir(YADISK_FOLDER + os.sep + cls)
 
 
 def parse_args():
@@ -200,8 +195,12 @@ def parse_args():
                         help="path folder where we download data from yadisk")
     parser.add_argument("--YADISK_TOKEN", default="", type=str,
                         help="token to work with yadisk")
+    parser.add_argument("--BABYGUN_FOLDER", default="babygun", type=str,
+                        help="token to work with yadisk")
 
     args = parser.parse_args()
+
+    # Достаем аргументы
     SAVE_FOLDER = args.SAVE_FOLDER
     YADISK_FOLDER = args.YADISK_FOLDER
     YADISK_TOKEN = args.YADISK_TOKEN
@@ -224,7 +223,7 @@ if __name__ == "__main__":
     # коннектимся к диске
     my_disk = yadisk.YaDisk(token=YADISK_TOKEN)
 
-    # создаем папки локально и на ядиске
+    # создаем папки для классов на ядиске
     make_folders()
     if not os.path.exists(SAVE_FOLDER):
         os.makedirs(SAVE_FOLDER, exist_ok=True)
