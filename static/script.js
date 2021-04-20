@@ -42,21 +42,28 @@ async function face_request(uuid, imageBlob) {
 }
 
 
-function extractPoints(recData) {
+function extractPoints(recData, canvas) {
     console.log("extracting points from recorded data of length ", recData.length)
     let points = [];
+    let canvasRect = canvas.getBoundingClientRect()
     for (const key in recData) {
         if (recData.hasOwnProperty(key)) {
-            points.push(recData[key]["docY"], recData[key]["docX"])
+            let docY = recData[key]["docY"]
+            let docX = recData[key]["docX"]
+            // надо убедиться что координаты лежат внури картинки
+            if (canvasRect.left <= docX && docX <= canvasRect.right &&
+                canvasRect.top <= docY && docY <= canvasRect.bottom)
+                points.push(docY, docX)
         }
     }
-    // для теста
-    if (points.length === 0) {
-        console.log("добавили одну точку для теста в points")
-        points.push(16, 67)
-    }
+    // // для теста
+    // if (points.length === 0) {
+    //     console.log("добавили одну точку для теста в points")
+    //     points.push(16, 67)
+    // }
 
-    console.log("resulting points: ", points)
+    // GazePlayer.PlayResultsData(recData)
+    console.log("length of points", points.length, "resulting points: ", points)
     return points
 }
 
@@ -153,7 +160,7 @@ $(() => {
                 console.log("Recording START........")
                 $(recording_symbol).show();
                 GazeRecorderAPI.Rec();
-                setTimeout(stopAndUpload, 5000);
+                GazeRecorderAPI.setTimeout(stopAndUpload, 10000);
             },
             () => {
                 console.log("face_promise failed => ничего дальше не вызываем")
@@ -194,10 +201,10 @@ $(() => {
                 });
 
             // запускам калибровку
-            // GazeCloudAPI.OnCalibrationComplete = () => {
-            calibCompleteActions(face_promise)
-            // };
-            // GazeCloudAPI.StartEyeTracking();
+            GazeCloudAPI.OnCalibrationComplete = () => {
+                calibCompleteActions(face_promise)
+            };
+            GazeCloudAPI.StartEyeTracking();
         })
     }
 

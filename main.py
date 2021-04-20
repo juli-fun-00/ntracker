@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from typing import List
 import merger
 import utils
-
+import math
 from pydantic import BaseModel
 
 
@@ -71,9 +71,7 @@ def process(old_img, new_img, uuid):
     """
     Принимаем 2 картинки, мерджим их с помощью нейронки, результат возвращаем
     """
-    # TODO вернуть merger, пока для теста так оставим
-    # return merger.merge(a=old_img, b=new_img, babygun_path=BABYGUN_FOLDER, savefolder=SAVE_FOLDER, uuid=uuid)
-    return old_img
+    return merger.merge(a=old_img, b=new_img, babygun_path=BABYGUN_FOLDER, savefolder=SAVE_FOLDER, uuid=uuid)
 
 
 def calculate_center(points):
@@ -81,21 +79,41 @@ def calculate_center(points):
     Находим центр масс(среднее) всех точек, смотрим концентрацию взгляда.
     """
     # Подумать нужен ли нам центроид (по теореме Грина) или все-таки среднее?
-    x = [p[0] for p in points]
-    y = [p[1] for p in points]
-    center_average = [int(sum(x) / len(points)), int(sum(y) / len(points))]
+    y = [p[0] for p in points]
+    x = [p[1] for p in points]
+    center_average = [int(sum(y) / len(points)), int(sum(x) / len(points))]
     return center_average
 
 
-def classify(points):
+def classify(points, frame_height: int, frame_width: int) -> str:
     """
-    Классифицифруем допустим что точки принимаю значения x - [0, 1920] y - [0, 1080]
+    Классифицифруем допустим что точки принимаю значения x - [0, frame_width] y - [0, height]
     и начало отсчета в левом верхнем углу, луч x направлен вправо, луч y вниз
+    ------------------------------------------------------------------
+    имеем 2 условия для генерации нулевого (CLASSES[0]) класса:
+    - если средняя дистания от центра масс до все точек меньше чем трешхолд
+    - если центр масс расположен выше носа
+    в остальных случаях будет первый класс (CLASSES[1])
     """
-    # y = center[0]
-    # x = center[1]
+    if len(points) == 0:
+        return CLASSES[0]
 
-    return np.random.choice(CLASSES)
+    DISTANCE_THRESHOLD = 30
+    NOSE_HEIGHT = frame_height // 3
+
+    # считаем расстояние от центра масс до остальных точек
+    center_mass = calculate_center(points)
+    distances_from_center = [math.hypot(p[0] - center_mass[0], p[1] - center_mass[1]) for p in points]
+    avg_dist = np.average(distances_from_center)
+
+    # принт результатов
+    print(f"average of distances is {avg_dist}, DISTANCE_THRESHOLD is {DISTANCE_THRESHOLD}")
+    print(f"center mass is {center_mass}, NOSE_HEIGHT IS {NOSE_HEIGHT}")
+
+    if avg_dist < DISTANCE_THRESHOLD or center_mass[0] < NOSE_HEIGHT:
+        return CLASSES[0]
+
+    return CLASSES[1]
 
 
 # routes
@@ -137,7 +155,7 @@ async def classify_endpoint(uuid: str, frame_height: int, frame_width: int,
     points = change_format(points)
 
     # классицифируем
-    class_type = classify(points)
+    class_type = classify(points, frame_height, frame_width)
     print(f"Classified to type {class_type}")
 
     # загружаем сохранянную из /face запроса картинку на yadisk
