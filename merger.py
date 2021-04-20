@@ -21,7 +21,7 @@ def merge(a, b, babygun_path, savefolder, uuid):
     utils.execute(command=command_align, workdir=babygun_path)
 
     print("executing merge...")
-    command_merge = f"python3 encode_images.py --early_stopping=False --lr=0.25 --batch_size=2 --iterations=20 " \
+    command_merge = f"python3 encode_images.py --early_stopping=False --lr=0.25 --batch_size=2 --iterations=12 " \
                     f"--output_video=False {merge_folder}/aligned_images {merge_folder}/generated_images " \
                     f"{merge_folder}/latent_representations"
     utils.execute(command=command_merge, workdir=babygun_path)

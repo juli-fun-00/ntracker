@@ -72,6 +72,7 @@ def process(old_img, new_img, uuid):
     Принимаем 2 картинки, мерджим их с помощью нейронки, результат возвращаем
     """
     return merger.merge(a=old_img, b=new_img, babygun_path=BABYGUN_FOLDER, savefolder=SAVE_FOLDER, uuid=uuid)
+    # return old_img
 
 
 def calculate_center(points):
@@ -85,7 +86,7 @@ def calculate_center(points):
     return center_average
 
 
-def classify(points, frame_height: int, frame_width: int) -> str:
+def classify(points, frame_height: int, frame_width: int):
     """
     Классифицифруем допустим что точки принимаю значения x - [0, frame_width] y - [0, height]
     и начало отсчета в левом верхнем углу, луч x направлен вправо, луч y вниз
@@ -96,9 +97,9 @@ def classify(points, frame_height: int, frame_width: int) -> str:
     в остальных случаях будет первый класс (CLASSES[1])
     """
     if len(points) == 0:
-        return CLASSES[0]
+        return np.random.choice(CLASSES), 0, 0, 0
 
-    DISTANCE_THRESHOLD = 30
+    DISTANCE_THRESHOLD = 170
     NOSE_HEIGHT = frame_height // 3
 
     # считаем расстояние от центра масс до остальных точек
@@ -111,9 +112,11 @@ def classify(points, frame_height: int, frame_width: int) -> str:
     print(f"center mass is {center_mass}, NOSE_HEIGHT IS {NOSE_HEIGHT}")
 
     if avg_dist < DISTANCE_THRESHOLD or center_mass[0] < NOSE_HEIGHT:
-        return CLASSES[0]
+        result_class = CLASSES[0]
+    else:
+        result_class = CLASSES[1]
 
-    return CLASSES[1]
+    return result_class, center_mass, avg_dist, DISTANCE_THRESHOLD
 
 
 # routes
@@ -155,7 +158,7 @@ async def classify_endpoint(uuid: str, frame_height: int, frame_width: int,
     points = change_format(points)
 
     # классицифируем
-    class_type = classify(points, frame_height, frame_width)
+    class_type, center_mass, avg_dist, dist_threshold = classify(points, frame_height, frame_width)
     print(f"Classified to type {class_type}")
 
     # загружаем сохранянную из /face запроса картинку на yadisk
@@ -177,8 +180,13 @@ async def classify_endpoint(uuid: str, frame_height: int, frame_width: int,
     if os.path.exists(SAVE_FOLDER + os.sep + uuid):
         shutil.rmtree(SAVE_FOLDER + os.sep + uuid, ignore_errors=True)
 
-    return {"class": class_type,
-            "message": np.random.choice(CLASS_MESSAGES[class_type])}
+    return {
+        "class": class_type,
+        "message": np.random.choice(CLASS_MESSAGES[class_type]),
+        "center_mass": center_mass,
+        "avg_dist": avg_dist,
+        "dist_threshold": dist_threshold
+    }
 
 
 @app.post("/face")

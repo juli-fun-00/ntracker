@@ -42,18 +42,25 @@ async function face_request(uuid, imageBlob) {
 }
 
 
-function extractPoints(recData, canvas) {
+function extractPoints(recData, img) {
     console.log("extracting points from recorded data of length ", recData.length)
+    console.log("points (ALL) are: ", recData)
     let points = [];
-    let canvasRect = canvas.getBoundingClientRect()
+    let canvasRect = img.getBoundingClientRect()
+    console.log("imgRect:", canvasRect)
+    console.log("img", img)
     for (const key in recData) {
         if (recData.hasOwnProperty(key)) {
             let docY = recData[key]["docY"]
             let docX = recData[key]["docX"]
             // надо убедиться что координаты лежат внури картинки
             if (canvasRect.left <= docX && docX <= canvasRect.right &&
-                canvasRect.top <= docY && docY <= canvasRect.bottom)
-                points.push(docY, docX)
+                canvasRect.top <= docY && docY <= canvasRect.bottom) {
+                // считаем координаты относительно левого-верхнего угла канваса
+                let frameY = docY - canvasRect.y
+                let frameX = docX - canvasRect.x
+                points.push(frameY, frameX)
+            }
         }
     }
     // // для теста
@@ -132,14 +139,18 @@ $(() => {
 
         // отправяем classify запрос
         const sessionReplayData = GazeRecorderAPI.GetRecData();
-        classify_request(current_id, frameHeight, frameWidth, extractPoints(sessionReplayData.gazeevents)).then(
+        classify_request(current_id, frameHeight, frameWidth, extractPoints(sessionReplayData.gazeevents, img)).then(
             (result) => {
                 console.log("User class is ", result['class'])
 
                 let text = document.querySelector("#person-class");
                 text.innerHTML = result['class'] + ": " + result['message']
-
                 $(text).show()
+
+                console.log("center_mass: ", result["center_mass"])
+                console.log("avg_dist: ", result["avg_dist"])
+                console.log("dist_threshold: ", result["dist_threshold"])
+
                 console.log("CLASSIFY request succeed", current_id)
             },
             () => {
