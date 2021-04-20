@@ -137,9 +137,7 @@ async def root(request: Request):
 
 # , points: List[Points] = Form(...)
 def change_format(points: list):
-    print('before reshape: ', points)
     result = np.reshape(points, (len(points) // 2, 2))
-    print('after reshape: ', result)
     return result
 
 
