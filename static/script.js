@@ -160,7 +160,7 @@ $(() => {
                 console.log("Recording START........")
                 $(recording_symbol).show();
                 GazeRecorderAPI.Rec();
-                GazeRecorderAPI.setTimeout(stopAndUpload, 10000);
+                setTimeout(stopAndUpload, 10000);
             },
             () => {
                 console.log("face_promise failed => ничего дальше не вызываем")
