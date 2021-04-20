@@ -2,6 +2,7 @@ import cv2
 import os
 import utils
 import argparse
+import numpy as np
 
 
 def merge(a, b, babygun_path, savefolder, uuid):
@@ -24,8 +25,8 @@ def merge(a, b, babygun_path, savefolder, uuid):
                     f"--output_video=False {merge_folder}/aligned_images {merge_folder}/generated_images " \
                     f"{merge_folder}/latent_representations"
     utils.execute(command=command_merge, workdir=babygun_path)
-
-    result = cv2.imread(f'{merge_folder}/generated_images/a_01.png')
+    result_name = np.random.choice(["a", "b"])
+    result = cv2.imread(f'{merge_folder}/generated_images/{result_name}_01.png')
     return result
 
 

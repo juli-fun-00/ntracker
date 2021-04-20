@@ -9,27 +9,19 @@ function uuidv4() {
 
 
 // функция отправляет uuid и точки, ожидает и отображает картинку
-async function classify_request(uuid, points) {
-    // console.log("CLASSIFY request started", uuid)
-    //
-    // let formData = new FormData();
-    // formData.set("smth", "smth")
-    // formData.set("points", JSON.stringify({points: points}))
-    // let response = await fetch("/classify?uuid=" + uuid, {
-    //     method: 'POST',
-    //     body: formData
-    // });
-    //
-    // return await response.json()
+async function classify_request(uuid, frameHeight, frameWidth, points) {
+    let url = 'classify?uuid=' + uuid + "&frame_height=" + frameHeight + "&frame_width=" + frameWidth;
+    console.log("CLASSIFY request started, url is ", url)
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json;charset=utf-8'
+        },
+        body: JSON.stringify({
+            points: points,
+            length: points.length
+        }),
 
-    console.log("CLASSIFY request started", uuid)
-    let formData = new FormData();
-    formData.set("points", JSON.stringify({points: points}));
-    // let points_final = JSON.stringify({points: points})//.toString()
-    // + "&points=" +
-    let response = await fetch("/classify?uuid=" + uuid, {
-        method: 'GET',
-        // body: formData
     });
 
     return await response.json()
@@ -55,13 +47,13 @@ function extractPoints(recData) {
     let points = [];
     for (const key in recData) {
         if (recData.hasOwnProperty(key)) {
-            points.push([recData[key]["docX"], recData[key]["docY"]])
+            points.push(recData[key]["docY"], recData[key]["docX"])
         }
     }
     // для теста
     if (points.length === 0) {
         console.log("добавили одну точку для теста в points")
-        points.push([16, 67])
+        points.push(16, 67)
     }
 
     console.log("resulting points: ", points)
@@ -80,6 +72,8 @@ $(() => {
     let current_id;
     let isCalibrating = false
     let calibratingButtonPressed = true;
+    let frameHeight = 1080
+    let frameWidth = 1920
 
     const video = document.querySelector("video");
     const canvas = document.createElement("canvas");
@@ -112,6 +106,8 @@ $(() => {
     function drawCameraFrameOnCanvas() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        frameHeight = canvas.height
+        frameWidth = canvas.width
         canvas.getContext("2d").drawImage(video, 0, 0);
     }
 
@@ -129,7 +125,7 @@ $(() => {
 
         // отправяем classify запрос
         const sessionReplayData = GazeRecorderAPI.GetRecData();
-        classify_request(current_id, extractPoints(sessionReplayData.gazeevents)).then(
+        classify_request(current_id, frameHeight, frameWidth, extractPoints(sessionReplayData.gazeevents)).then(
             (result) => {
                 console.log("User class is ", result['class'])
 
@@ -161,6 +157,7 @@ $(() => {
             },
             () => {
                 console.log("face_promise failed => ничего дальше не вызываем")
+                setInitialState()
             })
     }
 
@@ -193,14 +190,14 @@ $(() => {
                 },
                 () => {
                     console.log("---------- FACE request failed")
-                    // TODO go init state
+                    setInitialState()
                 });
 
             // запускам калибровку
-            GazeCloudAPI.OnCalibrationComplete = () => {
-                calibCompleteActions(face_promise)
-            };
-            GazeCloudAPI.StartEyeTracking();
+            // GazeCloudAPI.OnCalibrationComplete = () => {
+            calibCompleteActions(face_promise)
+            // };
+            // GazeCloudAPI.StartEyeTracking();
         })
     }
 

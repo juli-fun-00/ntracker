@@ -1,3 +1,5 @@
+import shutil
+
 import yadisk
 import cv2
 import uvicorn
@@ -70,11 +72,11 @@ def process(old_img, new_img, uuid):
     Принимаем 2 картинки, мерджим их с помощью нейронки, результат возвращаем
     """
     # TODO вернуть merger, пока для теста так оставим
-    return merger.merge(a=old_img, b=new_img, babygun_path=BABYGUN_FOLDER, savefolder=SAVE_FOLDER, uuid=uuid)
-    # return old_img
+    # return merger.merge(a=old_img, b=new_img, babygun_path=BABYGUN_FOLDER, savefolder=SAVE_FOLDER, uuid=uuid)
+    return old_img
 
 
-def calculate_center(points: List[List[int]]) -> List[int]:
+def calculate_center(points):
     """
     Находим центр масс(среднее) всех точек, смотрим концентрацию взгляда.
     """
@@ -85,13 +87,13 @@ def calculate_center(points: List[List[int]]) -> List[int]:
     return center_average
 
 
-def classify(center: List[int]) -> str:
+def classify(points):
     """
     Классифицифруем допустим что точки принимаю значения x - [0, 1920] y - [0, 1080]
     и начало отсчета в левом верхнем углу, луч x направлен вправо, луч y вниз
     """
-    y = center[0]
-    x = center[1]
+    # y = center[0]
+    # x = center[1]
 
     return np.random.choice(CLASSES)
 
@@ -113,53 +115,56 @@ async def root(request: Request):
 #             "class": CLASSES[0]}
 
 # , points: List[Points] = Form(...)
-@app.get("/classify")
-async def classify(uuid: str):
+def change_format(points: list):
+    print('before reshape: ', points)
+    result = np.reshape(points, (len(points) // 2, 2))
+    print('after reshape: ', result)
+    return result
+
+
+@app.post("/classify")
+async def classify_endpoint(uuid: str, frame_height: int, frame_width: int,
+                            length: int = Body(...), points: list = Body(...)):
     """
     description
     """
     print(f"--------------- New request /classify -------------")
-    # print('points are', points)
-    # print('points type is', type(points))
+    print('type of points is: ', type(points))
+    print('points are', points)
+    print(f"Received uuid: {uuid} and points len is {len(points)}")
 
-    class_type = CLASSES[0]
+    # переводим из массива точек формата [y,x,y,x] в [[y,x], [y,x]]
+    points = change_format(points)
+
+    # классицифируем
+    class_type = classify(points)
+    print(f"Classified to type {class_type}")
 
     # загружаем сохранянную из /face запроса картинку на yadisk
     remote_img_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".png"
     local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".png"
     upload(local_img_path, remote_img_path)
 
-    return {"class": class_type,
-            "message": np.random.choice(CLASS_MESSAGES[class_type])}
-
-    points_json = json.loads(points)
-    points = points_json['points']
-    print(f"Received uuid: {uuid} and points len is {len(points)}")
-
-    # классицифируем
-    class_type = await classify(calculate_center(points))
-    print(f"Classified to type {class_type}")
-
     # пути
-
     remote_points_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".json"
     local_points_path = SAVE_FOLDER + os.sep + uuid + os.sep + "points.json"
 
     # сохраняем на yadisk входные точки
     print("Saving input json-points")
     with open(local_points_path, "w+") as file:
-        file.write(points_json)
+        json.dump({"points": points.tolist()}, file)
     upload(local_points_path, remote_points_path)
 
     # удаляем локальные файлы относящиеся к этому запросу
-    os.remove(SAVE_FOLDER + os.sep + uuid)
+    if os.path.exists(SAVE_FOLDER + os.sep + uuid):
+        shutil.rmtree(SAVE_FOLDER + os.sep + uuid, ignore_errors=True)
 
     return {"class": class_type,
-            "message": await np.random.choice(CLASS_MESSAGES[class_type])}
+            "message": np.random.choice(CLASS_MESSAGES[class_type])}
 
 
 @app.post("/face")
-async def face_process(uuid: str, image: UploadFile = File(...)):
+async def face_endpoint(uuid: str, image: UploadFile = File(...)):
     """
     Обрабатываем фото пользователя
     """
