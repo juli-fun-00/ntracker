@@ -20,3 +20,7 @@ python main.py --SAVE_FOLDER=/home/alex/ntracker/savefolder --YADISK_TOKEN="toke
 `YADISK_TOKEN` указывает токен, с помощью которого мы получаем разрешение на работу с яндекс диском
 
 2) Если все корректно запущено, то заходим на http://127.0.0.1:8000 и смотрим как это работает 
+
+
+## References
+Для слияние лиц мы используем нейросеть babygun отсюда https://github.com/tg-bomze/BabyGAN 
