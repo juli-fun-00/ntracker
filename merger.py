@@ -27,6 +27,7 @@ def merge(a, b, babygun_path, savefolder, uuid):
     utils.execute(command=command_merge, workdir=babygun_path)
     result_name = np.random.choice(["a", "b"])
     result = cv2.imread(f'{merge_folder}/generated_images/{result_name}_01.png')
+    print("result shape is ", result.shape)
     return result
 
 

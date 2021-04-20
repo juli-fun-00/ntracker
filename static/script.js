@@ -135,11 +135,16 @@ $(() => {
 
     function stopAndUpload() {
         console.log("stopAndUpload")
+
+        // достаем данные
+        const sessionReplayData = GazeRecorderAPI.GetRecData();
+        let events = sessionReplayData.gazeevents
+
+        // осталавливаем запись и сессию записи
         stop_recording();
 
         // отправяем classify запрос
-        const sessionReplayData = GazeRecorderAPI.GetRecData();
-        classify_request(current_id, frameHeight, frameWidth, extractPoints(sessionReplayData.gazeevents, img)).then(
+        classify_request(current_id, frameHeight, frameWidth, extractPoints(events, img)).then(
             (result) => {
                 console.log("User class is ", result['class'])
 
@@ -185,13 +190,15 @@ $(() => {
         current_id = uuidv4()
         console.log("current uuid: ", current_id)
 
+        // достаем картинку пользователя
+        drawCameraFrameOnCanvas()
+
         $(text).hide()
         $(img).hide();
         $(recording_symbol).hide();
         $(video).hide();
 
-        // достаем картинку пользователя
-        drawCameraFrameOnCanvas()
+
         canvas.toBlob((blob) => {
             if (blob === null) {
                 console.log("blob is null for some reason...")
@@ -208,6 +215,7 @@ $(() => {
                 },
                 () => {
                     console.log("---------- FACE request failed")
+                    stop_recording()
                     setInitialState()
                 });
 
