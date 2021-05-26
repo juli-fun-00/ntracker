@@ -227,9 +227,9 @@ async def face_endpoint(uuid: str, image: UploadFile = File(...)):
 
     # сохраняем на yadisk картинку-результат
     print("saving result-pic on yadisk")
-    if not cv2.imwrite(local_last_merged_img_path, result_img):
-        print(f"ERROR on imwrite {local_last_merged_img_path}")
-        raise Exception("bad imwrite happened")
+    # if not cv2.imwrite(local_last_merged_img_path, result_img):
+    #     print(f"ERROR on imwrite {local_last_merged_img_path}")
+    #     raise Exception("bad imwrite happened")
 
     upload(local_last_merged_img_path, remote_last_merged_img_path)
 
@@ -293,15 +293,24 @@ if __name__ == "__main__":
     print("Program started")
     # парсим аргументы
     parse_args()
+else:
+    YADISK_FOLDER = "disk:/Приложения/N-tracker"
+    YADISK_TOKEN = os.environ['YADISK_TOKEN']
+    SAVE_FOLDER = os.environ['SAVE_FOLDER']
+    BABYGUN_FOLDER = os.environ['BABYGUN_FOLDER']
+    print(f"SAVE_FOLDER   is '{SAVE_FOLDER}'")
+    print(f"YADISK_FOLDER is '{YADISK_FOLDER}'")
+    print(f"BABYGUN_FOLDER is '{BABYGUN_FOLDER}'")
 
-    # коннектимся к диске
-    my_disk = yadisk.YaDisk(token=YADISK_TOKEN)
 
-    # создаем папки для классов на ядиске
-    make_folders()
-    if not os.path.exists(SAVE_FOLDER):
-        os.makedirs(SAVE_FOLDER, exist_ok=True)
-        print(f"Create path {SAVE_FOLDER} because it didn't exist")
+# коннектимся к диску
+my_disk = yadisk.YaDisk(token=YADISK_TOKEN)
 
-    # запускаем сервер
-    uvicorn.run(app)
+# создаем папки для классов на ядиске
+make_folders()
+if not os.path.exists(SAVE_FOLDER):
+    os.makedirs(SAVE_FOLDER, exist_ok=True)
+    print(f"Create path {SAVE_FOLDER} because it didn't exist")
+
+# запускаем сервер
+#uvicorn.run(app, host="0.0.0.0")

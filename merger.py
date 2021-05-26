@@ -6,6 +6,7 @@ import numpy as np
 
 
 def merge(a, b, babygun_path, savefolder, uuid):
+    return a
     merge_folder = savefolder + os.sep + uuid
 
     necessary_folders = ['raw_images', 'aligned_images', 'generated_images', 'latent_representations']

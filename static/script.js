@@ -103,7 +103,7 @@ $(() => {
         $(img).hide();
         $(recording_symbol).hide();
         $(text).hide()
-        $(video).show();
+        $(video).hide();
     }
 
     setInitialState()
@@ -197,6 +197,7 @@ $(() => {
         $(img).hide();
         $(recording_symbol).hide();
         $(video).hide();
+        $(document.querySelector('body')).removeClass('bg')
 
 
         canvas.toBlob((blob) => {
@@ -223,7 +224,8 @@ $(() => {
             GazeCloudAPI.OnCalibrationComplete = () => {
                 calibCompleteActions(face_promise)
             };
-            GazeCloudAPI.StartEyeTracking();
+            //GazeCloudAPI.StartEyeTracking();
+            calibCompleteActions(face_promise)
         })
     }
 
