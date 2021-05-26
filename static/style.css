@@ -1,5 +1,6 @@
 body, html {
   height: 100%;
+  background: #222;
 }
 
 .bg { 
@@ -32,7 +33,15 @@ body, html {
   margin: 2em auto;
 }
 
-.video, #screenshot {
-  width: 100%;
+.video, #screenshot img {
+  width: 100vw;
 }
 
+section#person-class {
+  width: 80vw;
+  margin: 1em auto;
+  border: 2px solid #522d7b;
+  padding: 1em;
+  font-size: xx-large;
+  line-height: 1.2em;
+}

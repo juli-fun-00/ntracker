@@ -1,0 +1,75 @@
+<div id="CamAccessid"
+    style="height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 0.8; background-color: black;z-index: 9999;">
+    <h1 align="center" style="color: white;">Нужен доступ к камере</h1>
+</div>
+<div id="errid"
+    style="height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 0.9; background-color: black;z-index: 99999;">
+    <h1 id="errmsgid" align="center" style="color: white;">Err</h1>
+    <p align="center"> <button class="buttonRecalibrate" onclick=" GazeCloudAPI.RestartEyeTracking();" type="button">Попробуйте снова</button> </p>
+</div>
+<div id="loadid"
+    style="height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 0.93; background-color: black;z-index: 9999;">
+    <h1 align="center" style="color: white;"> Загрузка...</h1>
+    <div class="loader"></div>
+</div>
+<div id="demoid"
+    style="height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 0.8; background-color: black;z-index: 9999;">
+    <h1 align="center" style="color: white;">Время демо истекло</h1>
+</div>
+<div id="waitslotid"
+    style="height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 0.93; background-color: black;z-index: 9999;">
+    <h1 align="center" style="color: white;">Waiting for free slot...</h1>
+    <h1 id="waitslottimeid" align="center" style="color: white;">30</h1>
+</div>
+<div id="infoWaitForCalibration"
+    style="height: 100%; width: 100%; position: fixed;left: 0px;top: 0%; display: none ;opacity: 0.9;background-color: black;z-index: 999; ">
+    <h1 align="center" style="color: white;"> Подождите, идет калибрация...</h1>
+    <div id="clickinfoid"
+        style="position: fixed; height:100%; width:100%; left: 0%;top: 50%;text-align: center; display:block">
+        <p> При каждом клике точность позиционирования увеличится </p>
+    </div>
+    <div class="loader"></div>
+</div>
+<div id="dpimm" style="height: 10cm; width: 10cm; left: 0%; position: fixed; top: 0%; z-index:-1"></div>
+<div id="CalDivId"
+    style="display: none; z-index: 999;background-color:white; position:fixed; left:0px; top:0px ;width: 100%; height: 100% ">
+    <h1 id="calinfoid"
+        style=" text-align: center; position: fixed;margin-left:auto; color:black; z-index: 999;top:25% ; width:100%">
+        Смотрите на точкуt</h1>
+    <h1 id="calinfoWaitid"
+        style=" text-align: center; position: fixed;margin-left:auto; color:black; z-index: 999;top:60% ; width:100%">3
+    </h1> <canvas id="CalCanvasId"
+        style="background-color:white ;display: block;  left:0px; top:0px; width: 100%; height: 100%"> </canvas>
+</div>
+<div id="initializingid"
+    style="text-align: center; height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 0.6; background-color: black;z-index: 9999;">
+    <h1 style="color: white;">Инициализация...</h1>
+    <div class="loader"></div>
+</div>
+<div id="camid" style=" z-index: 1000;position:absolute; left:50%; top:2% ; margin-left: -160px; "> <video
+        id="showvideoid" autoplay width="320" height="240"
+        style=" display: block ;border-radius: 16px;background-color:black;"> </video><img height="240" width="320"
+        id="facemaskimgok" src="https://api.gazerecorder.com/FaceMaskok.png"
+        style=" position:absolute; left:0%; top:0%; opacity: 0.6; display: none; border-radius: 16px;"> <img
+        height="240" width="320" id="facemaskimgno" src="https://api.gazerecorder.com/FaceMaskno.png"
+        style=" position:absolute; left:0%; top:0%; opacity: 0.6; display: block; border-radius: 16px;">
+    <div id="showinit" style="text-align: center;"> <br>
+        <div> <button class="buttonCal" disabled id="_ButtonCalibrateId" type="button"
+                onclick="GazeCloudAPI.ShowCalibration()"> <img src="https://api.gazerecorder.com/calibrate.png"
+                    width="40" height="40">
+                <p style=" left:0%; top:0%; margin : 0"> Начать калибрацию </p>
+            </button>
+            <p id="corectpositionid" style=" color: red;margin : 0; display:none"> Пожалуйста, смотрите прямо в камеру
+            </p>
+        </div> <br> Убедитесь, что : <ul
+            style="list-style-type:disc; text-align: left;""> <li>Ваше лицо видимо</li> <li>В помещении достаточно светло</li> <li>Сзади вас нет яркого света</li> <li>Свет не отражается в ваших очках</li> </ul> </div > </div> <img id="
+            calimgid" src="https://api.gazerecorder.com/calibrate.png" width="300" height="227" style="display: none;">
+            <img id="arrowright" src="https://api.gazerecorder.com/arrow-right.png" style="display: none;"> <img
+                id="arrowleft" src="https://api.gazerecorder.com/arrow-left.png" style="display: none;"><img
+                id="arrowdown" src="https://api.gazerecorder.com/arrow-down.png" style="display: none;"><img
+                id="arrowup" src="https://api.gazerecorder.com/arrow-up.png" style="display: none;"><img id="arrowimgid"
+                src="https://api.gazerecorder.com/arrow-right.png" width="300" height="227" style="display: none;">
+            <canvas id="bgcanvas" width="640" height="480" style="display:none"></canvas>
+            <div id="GazeFlowContainer"
+                style=" background-color: white ;height:100%; width:100%; left: 0px; position: fixed; top: 0%;display:none;opacity: 1.0;z-index: 99;">
+            </div>

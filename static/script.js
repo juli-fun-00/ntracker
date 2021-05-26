@@ -146,22 +146,28 @@ $(() => {
         // отправяем classify запрос
         classify_request(current_id, frameHeight, frameWidth, extractPoints(events, img)).then(
             (result) => {
-                console.log("User class is ", result['class'])
+                console.log("User class is ", result['class']);
 
                 let text = document.querySelector("#person-class");
-                text.innerHTML = result['class'] + ": " + result['message']
-                $(text).show()
+                text.innerHTML = result['message'];
+                $(text).show();
+                let timeLeft = 20;
+                setTimeout(() => {window.location.reload()}, timeLeft * 1000);
+                setInterval(() => {
+                    timeLeft--;
+                    console.log(`Осталось ${timeLeft} секунд до перезапуска`);
+                }, 1000);
 
-                console.log("center_mass: ", result["center_mass"])
-                console.log("avg_dist: ", result["avg_dist"])
-                console.log("dist_threshold: ", result["dist_threshold"])
+                console.log("center_mass: ", result["center_mass"]);
+                console.log("avg_dist: ", result["avg_dist"]);
+                console.log("dist_threshold: ", result["dist_threshold"]);
 
-                console.log("CLASSIFY request succeed", current_id)
+                console.log("CLASSIFY request succeed", current_id);
             },
             () => {
-                console.log("--------- CLASSIFY request failed")
+                console.log("--------- CLASSIFY request failed");
             }
-        )
+        );
     }
 
     function calibCompleteActions(face_promise) {
@@ -224,15 +230,18 @@ $(() => {
             GazeCloudAPI.OnCalibrationComplete = () => {
                 calibCompleteActions(face_promise)
             };
-            //GazeCloudAPI.StartEyeTracking();
-            calibCompleteActions(face_promise)
+            GazeCloudAPI.StartEyeTracking();
+            // calibCompleteActions(face_promise)
         })
     }
 
 
     const constraints = {
-        video: true
+        video: {
+            deviceId: navigator.deviceId //"392153864a30ac86ff4405284c660eba6ec8b335159d7e64811a09ad1c7e2dd6"
+        }
     };
+    console.dir(constraints);
 
     navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
         video.srcObject = stream;
@@ -248,7 +257,7 @@ $(() => {
                 start_calibrate()
             } else if (!calibratingButtonPressed) {
                 const startCalibratingButton = document.querySelector("#_ButtonCalibrateId");
-                if (startCalibratingButton != null) {
+                if (startCalibratingButton != null && !startCalibratingButton.disabled) {
                     startCalibratingButton.click()
                     calibratingButtonPressed = true;
                     console.log("Click button within calibrating simulated")

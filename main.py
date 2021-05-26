@@ -27,24 +27,25 @@ SAVE_FOLDER = ""
 YADISK_FOLDER = ""
 YADISK_TOKEN = ""
 BABYGUN_FOLDER = ""
+DEVICE_ID = "392153864a30ac86ff4405284c660eba6ec8b335159d7e64811a09ad1c7e2dd6"
 CLASSES = ["ambient", "scanner"]
 CLASS_MESSAGES = {
     "ambient": [
         # 1
-        "Сейчас ваше восприятие склонно к амбъентному типу. Что это значит? Взгляд настроен воспринимать лицо как "
+        "Сейчас ваше восприятие склонно к <strong>амбъентному</strong> типу. Что это значит? Взгляд настроен воспринимать лицо как "
         "единое целое, а не составные части. Такой тип обеспечивает быстрое распознование базовых эмоций человека.",
         # 2
-        "Ваш способ восприятия лиц на данный момент — синтетический. Особенно чутко вы сейчас сможете распознать "
-        "выражения грусти, гнева, удивления и радости. Именно этот способ присущ людям 70% времени"],
+        "Ваш способ восприятия лиц на данный момент — <strong>синтетический</strong>. Особенно чутко вы сейчас сможете распознать "
+        "выражения грусти, гнева, удивления и радости. Именно этот способ присущ людям 70% времени."],
 
     "scanner": [
         # 1
-        "Ваш способ восприятия лиц на данный момент — аналитический. Особенно чутко вы сейчас сможете распознать "
+        "Ваш способ восприятия лиц на данный момент — <strong>аналитический</strong>. Особенно чутко вы сейчас сможете распознать "
         "выражения удивления и отвращения.  Этот способ присущ людям всего 30% времени.",
         # 2
-        "Сейчас ваше восприятие склонно к факальному типу. Что это значит? Взгляд настроен воспринимать лицо по "
+        "Сейчас ваше восприятие склонно к <strong>факальному</strong> типу. Что это значит? Взгляд настроен воспринимать лицо по "
         "отдельным частям и только после этого составлять общую картинку. При взаимодействии с людьми у вас "
-        "включается аналитический способ межличностного восприятия. "
+        "включается аналитический способ межличностного восприятия."
     ]
 }
 
@@ -124,6 +125,7 @@ def classify(points, frame_height: int, frame_width: int):
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {
         "request": request,
+        "device_id": DEVICE_ID
     })
 
 
@@ -268,6 +270,9 @@ def parse_args():
                         help="token to work with yadisk")
     parser.add_argument("--BABYGUN_FOLDER", default="babygun", type=str,
                         help="token to work with yadisk")
+    parser.add_argument("--DEVICE_ID", default="", type=str,
+                        help="webcam device id to use")
+
 
     args = parser.parse_args()
 
@@ -276,6 +281,7 @@ def parse_args():
     YADISK_FOLDER = args.YADISK_FOLDER
     YADISK_TOKEN = args.YADISK_TOKEN
     BABYGUN_FOLDER = args.BABYGUN_FOLDER
+    DEVICE_ID = args.DEVICE_ID
 
     if SAVE_FOLDER[-1] == '/':
         SAVE_FOLDER = SAVE_FOLDER[:-1]
@@ -287,6 +293,7 @@ def parse_args():
     print(f"SAVE_FOLDER   is '{SAVE_FOLDER}'")
     print(f"YADISK_FOLDER is '{YADISK_FOLDER}'")
     print(f"BABYGUN_FOLDER is '{BABYGUN_FOLDER}'")
+    print(f"DEVICE_ID is '{DEVICE_ID}'")
 
 
 if __name__ == "__main__":
@@ -298,9 +305,11 @@ else:
     YADISK_TOKEN = os.environ['YADISK_TOKEN']
     SAVE_FOLDER = os.environ['SAVE_FOLDER']
     BABYGUN_FOLDER = os.environ['BABYGUN_FOLDER']
+    DEVICE_ID = os.environ['DEVICE_ID']
     print(f"SAVE_FOLDER   is '{SAVE_FOLDER}'")
     print(f"YADISK_FOLDER is '{YADISK_FOLDER}'")
     print(f"BABYGUN_FOLDER is '{BABYGUN_FOLDER}'")
+    print(f"DEVICE_ID is '{DEVICE_ID}'")
 
 
 # коннектимся к диску
