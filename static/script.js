@@ -93,7 +93,7 @@ $(() => {
     const canvas = document.createElement("canvas");
     const img = document.querySelector("#screenshot img");
     const text = document.querySelector("#person-class");
-    const recording_symbol = document.querySelector("#recording");
+    const reloadText = document.querySelector("#recording");
 
     function setInitialState() {
         console.log("Setting initial state")
@@ -101,7 +101,7 @@ $(() => {
         calibratingButtonPressed = true
 
         $(img).hide();
-        $(recording_symbol).hide();
+        $(reloadText).hide();
         $(text).hide()
         $(video).hide();
     }
@@ -130,7 +130,6 @@ $(() => {
         GazeRecorderAPI.StopRec();
         GazeCloudAPI.StopEyeTracking();
         isCalibrating = false;
-        $(recording_symbol).hide();
     }
 
     function stopAndUpload() {
@@ -143,6 +142,8 @@ $(() => {
         // осталавливаем запись и сессию записи
         stop_recording();
 
+        $(reloadText).show();
+
         // отправяем classify запрос
         classify_request(current_id, frameHeight, frameWidth, extractPoints(events, img)).then(
             (result) => {
@@ -152,9 +153,12 @@ $(() => {
                 text.innerHTML = result['message'];
                 $(text).show();
                 let timeLeft = 20;
-                setTimeout(() => {window.location.reload()}, timeLeft * 1000);
+                setTimeout(() => { window.location.reload() }, timeLeft * 1000);
+                
                 setInterval(() => {
                     timeLeft--;
+                    reloadTextVal = `Сброс в начало через ${timeLeft} сек...`;
+                    reloadText.innerHTML = reloadTextVal;
                     console.log(`Осталось ${timeLeft} секунд до перезапуска`);
                 }, 1000);
 
@@ -180,7 +184,6 @@ $(() => {
 
                 // начинаем запись
                 console.log("Recording START........")
-                $(recording_symbol).show();
                 GazeRecorderAPI.Rec();
                 setTimeout(stopAndUpload, 10000);
             },
@@ -190,20 +193,12 @@ $(() => {
             })
     }
 
-    function start_calibrate() {
-        console.log("START function")
-        isCalibrating = true
-        current_id = uuidv4()
-        console.log("current uuid: ", current_id)
-
+    function takePicture() {
+        current_id = uuidv4();
         // достаем картинку пользователя
-        drawCameraFrameOnCanvas()
+        drawCameraFrameOnCanvas();
 
-        $(text).hide()
-        $(img).hide();
-        $(recording_symbol).hide();
-        $(video).hide();
-        $(document.querySelector('body')).removeClass('bg')
+        console.log("current uuid: ", current_id)
 
 
         canvas.toBlob((blob) => {
@@ -212,6 +207,7 @@ $(() => {
                 setInitialState()
                 return;
             }
+            console.log('picture taken');
 
             // отправляем картинку пользователя на merge
             let face_promise = face_request(current_id, blob).then(
@@ -226,13 +222,23 @@ $(() => {
                     setInitialState()
                 });
 
-            // запускам калибровку
             GazeCloudAPI.OnCalibrationComplete = () => {
                 calibCompleteActions(face_promise)
             };
-            GazeCloudAPI.StartEyeTracking();
-            // calibCompleteActions(face_promise)
-        })
+        });
+    }
+
+    function start_calibrate() {
+        console.log("START function")
+        isCalibrating = true
+
+
+        $(text).hide()
+        $(img).hide();
+        $(video).hide();
+        $(document.querySelector('body')).removeClass('bg')
+
+        GazeCloudAPI.StartEyeTracking();
     }
 
 
@@ -254,15 +260,15 @@ $(() => {
             if (!isCalibrating) {
                 console.log("Click calibrating simulated")
                 calibratingButtonPressed = false;
-                start_calibrate()
+                start_calibrate();
             } else if (!calibratingButtonPressed) {
                 const startCalibratingButton = document.querySelector("#_ButtonCalibrateId");
                 if (startCalibratingButton != null && !startCalibratingButton.disabled) {
-                    startCalibratingButton.click()
+                    startCalibratingButton.click();
                     calibratingButtonPressed = true;
-                    console.log("Click button within calibrating simulated")
+                    console.log("Click button within calibrating simulated");
+                    takePicture();
                 }
-
             }
         }
     })
