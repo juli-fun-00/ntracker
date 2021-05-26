@@ -229,9 +229,9 @@ async def face_endpoint(uuid: str, image: UploadFile = File(...)):
 
     # сохраняем на yadisk картинку-результат
     print("saving result-pic on yadisk")
-    # if not cv2.imwrite(local_last_merged_img_path, result_img):
-    #     print(f"ERROR on imwrite {local_last_merged_img_path}")
-    #     raise Exception("bad imwrite happened")
+    if not cv2.imwrite(local_last_merged_img_path, result_img):
+        print(f"ERROR on imwrite {local_last_merged_img_path}")
+        raise Exception("bad imwrite happened")
 
     upload(local_last_merged_img_path, remote_last_merged_img_path)
 
