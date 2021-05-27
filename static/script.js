@@ -32,7 +32,7 @@ async function face_request(uuid, imageBlob) {
     console.log("FACE request started", uuid, imageBlob)
 
     let formData = new FormData();
-    formData.set("image", imageBlob, uuid + ".png");
+    formData.set("image", imageBlob, uuid + ".jpg");
     let response = await fetch("/face?uuid=" + uuid, {
         method: 'POST',
         body: formData
@@ -201,10 +201,18 @@ $(() => {
         console.log("current uuid: ", current_id)
 
 
+        let retryCount = 0;
+
         canvas.toBlob((blob) => {
             if (blob === null) {
-                console.log("blob is null for some reason...")
-                setInitialState()
+                console.log(`blob is null for some reason... retry count = ${retryCount}`)
+                if (retryCount >= 3) {
+                    setInitialState();
+                } else {
+                    retryCount++;
+                    setTimeout(takePicture, 1000);
+                }
+
                 return;
             }
             console.log('picture taken');
@@ -214,7 +222,7 @@ $(() => {
                 (result) => {
                     console.log("FACE request succeed", current_id)
                     let img = document.querySelector("#screenshot img");
-                    img.src = 'data:image/png;base64,' + result["encoded_image"];
+                    img.src = 'data:image/jpeg;base64,' + result["encoded_image"];
                 },
                 () => {
                     console.log("---------- FACE request failed")
@@ -225,7 +233,7 @@ $(() => {
             GazeCloudAPI.OnCalibrationComplete = () => {
                 calibCompleteActions(face_promise)
             };
-        });
+        }, "image/jpeg", 0.6);
     }
 
     function start_calibrate() {

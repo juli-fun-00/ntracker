@@ -14,8 +14,8 @@ def merge(a, b, babygun_path, savefolder, uuid):
         utils.local_mkdir(merge_folder + os.sep + folder)
 
     print("Writing a and b pictures...")
-    cv2.imwrite(f'{merge_folder}/raw_images/a.png', a)
-    cv2.imwrite(f'{merge_folder}/raw_images/b.png', b)
+    cv2.imwrite(f'{merge_folder}/raw_images/a.jpg', a)
+    cv2.imwrite(f'{merge_folder}/raw_images/b.jpg', b)
 
     print("executing align...")
     command_align = f"python align_images.py {merge_folder}/raw_images/ {merge_folder}/aligned_images/"
@@ -27,7 +27,14 @@ def merge(a, b, babygun_path, savefolder, uuid):
                     f"{merge_folder}/latent_representations"
     utils.execute(command=command_merge, workdir=babygun_path)
     result_name = np.random.choice(["a", "b"])
-    result = cv2.imread(f'{merge_folder}/generated_images/{result_name}_01.png')
+
+    orig_file_path = f'{merge_folder}/generated_images/{result_name}_01.png'
+    jpg_file_path = orig_file_path.replace('.png', '.jpg')
+    command_convert = f"/usr/bin/convert {orig_file_path} {jpg_file_path}"
+    print("executing convert...")
+    utils.execute(command=command_convert, workdir=babygun_path)
+
+    result = cv2.imread(jpg_file_path)
     return result
 
 

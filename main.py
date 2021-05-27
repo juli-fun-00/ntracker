@@ -162,8 +162,8 @@ async def classify_endpoint(uuid: str, frame_height: int, frame_width: int,
     print(f"Classified to type {class_type}")
 
     # загружаем сохранянную из /face запроса картинку на yadisk
-    remote_img_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".png"
-    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".png"
+    remote_img_path = YADISK_FOLDER + os.sep + class_type + os.sep + uuid + ".jpg"
+    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".jpg"
     upload(local_img_path, remote_img_path)
 
     # пути
@@ -201,10 +201,10 @@ async def face_endpoint(uuid: str, image: UploadFile = File(...)):
     utils.local_mkdir(SAVE_FOLDER + os.sep + uuid)
 
     # прописываем локальные и удаленные (которые на yadisk) пути
-    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".png"
+    local_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + uuid + ".jpg"
 
-    remote_last_merged_img_path = YADISK_FOLDER + os.sep + "last_merged.png"
-    local_last_merged_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + "last_merged.png"
+    remote_last_merged_img_path = YADISK_FOLDER + os.sep + "last_merged.jpg"
+    local_last_merged_img_path = SAVE_FOLDER + os.sep + uuid + os.sep + "last_merged.jpg"
 
     # читаем переданную в параметрах картинку
     print("Reading input pic")
@@ -237,7 +237,7 @@ async def face_endpoint(uuid: str, image: UploadFile = File(...)):
 
     # отправляем картинку-результат в виде закодированной строки на фронт
     print("sending result pic to front")
-    _, encoded_img = cv2.imencode('.PNG', result_img)
+    _, encoded_img = cv2.imencode('.jpg', result_img)
     encoded_img = base64.b64encode(encoded_img)
     return {"encoded_image": encoded_img}
 

@@ -16,13 +16,13 @@ RUN add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 100 && python3 -V
 RUN python3 -m pip install --user --upgrade pip
 
-#copy babygun
-COPY babygun    /opt/ntracker/babygun
-
 #install  requirements
 COPY requirements.txt /opt/ntracker/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r /opt/ntracker/requirements.txt
+
+#copy babygun
+COPY babygun    /opt/ntracker/babygun
 
 
 # copy code

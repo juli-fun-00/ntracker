@@ -11,7 +11,7 @@ certifi==2020.12.5
 chardet==4.0.0
 click==7.1.2
 cmake==3.18.4.post1
-dataclasses==0.8
+dataclasses==0.6
 dlib-bin==19.21.0
 dnspython==2.1.0
 email-validator==1.1.2
