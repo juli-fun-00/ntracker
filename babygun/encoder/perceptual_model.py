@@ -233,6 +233,7 @@ class PerceptualModel:
                     _, img_name = os.path.split(images_list[i])
                     mask_img = os.path.join(self.mask_dir, f'{img_name}')
                     if (os.path.isfile(mask_img)):
+                    # if False:
                         print("Loading mask " + mask_img)
                         imask = PIL.Image.open(mask_img).convert('L')
                         mask = np.array(imask)/255

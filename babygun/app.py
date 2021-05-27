@@ -85,19 +85,51 @@ class Config:
 
 model_config = Config()
 
+perceptual_model = None
+ff_model = None
+generator = None
+discriminator_network = None
+perc_model = None
+
 @app.before_first_request
 def load_model_action():
+  global perceptual_model
+  global ff_model
+  global generator
+  global discriminator_network
+  global perc_model
+
+  os.makedirs(model_config.data_dir, exist_ok=True)
+  os.makedirs(model_config.mask_dir, exist_ok=True)
+
+  # Initialize generator and perceptual model
+  tflib.init_tf()
+  with dnnlib.util.open_url(model_config.model_url, cache_dir=config.cache_dir) as f:
+      generator_network, discriminator_network, Gs_network = pickle.load(f)
+  generator = Generator(Gs_network, model_config.batch_size, clipping_threshold=model_config.clipping_threshold, tiled_dlatent=model_config.tile_dlatents, model_res=model_config.model_res, randomize_noise=model_config.randomize_noise)
+
+  if (model_config.use_lpips_loss > 0.00000001):
+      with dnnlib.util.open_url(model_config.architecture, cache_dir=config.cache_dir) as f:
+          perc_model =  pickle.load(f)
+  perceptual_model = PerceptualModel(model_config, perc_model=perc_model, batch_size=model_config.batch_size)
+  perceptual_model.build_perceptual_model(generator, discriminator_network)
+
+  print("Loading ResNet Model:")
+  ff_model = load_model(model_config.load_resnet)
+# 
+  logging.info("Model loaded")
+
+
+@app.route('/predict/', methods=['GET', 'POST'])
+def predict():
 #   global perceptual_model
 #   global ff_model
 #   global generator
 #   global discriminator_network
 #   global perc_model
 
-  os.makedirs(model_config.data_dir, exist_ok=True)
-  os.makedirs(model_config.mask_dir, exist_ok=True)
-
-  # Initialize generator and perceptual model
 #   tflib.init_tf()
+
 #   with dnnlib.util.open_url(model_config.model_url, cache_dir=config.cache_dir) as f:
 #       generator_network, discriminator_network, Gs_network = pickle.load(f)
 #   generator = Generator(Gs_network, model_config.batch_size, clipping_threshold=model_config.clipping_threshold, tiled_dlatent=model_config.tile_dlatents, model_res=model_config.model_res, randomize_noise=model_config.randomize_noise)
@@ -112,32 +144,6 @@ def load_model_action():
 #   ff_model = load_model(model_config.load_resnet)
 
 #   logging.info("Model loaded")
-
-
-@app.route('/predict/', methods=['GET', 'POST'])
-def predict():
-#   global perceptual_model
-#   global ff_model
-#   global generator
-#   global discriminator_network
-#   global perc_model
-
-  tflib.init_tf()
-
-  with dnnlib.util.open_url(model_config.model_url, cache_dir=config.cache_dir) as f:
-      generator_network, discriminator_network, Gs_network = pickle.load(f)
-  generator = Generator(Gs_network, model_config.batch_size, clipping_threshold=model_config.clipping_threshold, tiled_dlatent=model_config.tile_dlatents, model_res=model_config.model_res, randomize_noise=model_config.randomize_noise)
-
-  if (model_config.use_lpips_loss > 0.00000001):
-      with dnnlib.util.open_url(model_config.architecture, cache_dir=config.cache_dir) as f:
-          perc_model =  pickle.load(f)
-  perceptual_model = PerceptualModel(model_config, perc_model=perc_model, batch_size=model_config.batch_size)
-  perceptual_model.build_perceptual_model(generator, discriminator_network)
-
-  print("Loading ResNet Model:")
-  ff_model = load_model(model_config.load_resnet)
-
-  logging.info("Model loaded")
 
 
   src_dir = request.args.get('src_dir')
@@ -155,6 +161,7 @@ def predict():
 
   # Optimize (only) dlatents by minimizing perceptual loss between reference and generated images in feature space
   for images_batch in tqdm(split_to_batches(ref_images, model_config.batch_size), total=len(ref_images)//model_config.batch_size):
+#   for images_batch in split_to_batches(ref_images, model_config.batch_size):
       names = [os.path.splitext(os.path.basename(x))[0] for x in images_batch]
 
       perceptual_model.set_reference_images(images_batch)
@@ -191,7 +198,7 @@ def predict():
       generated_dlatents = generator.get_dlatents()
       for img_array, dlatent, img_path, img_name in zip(generated_images, generated_dlatents, images_batch, names):
           mask_img = None
-          if model_config.composite_mask and (model_config.load_mask or model_config.face_mask):
+          if model_config.composite_mask and model_config.face_mask:
               _, im_name = os.path.split(img_path)
               mask_img = os.path.join(model_config.mask_dir, f'{im_name}')
           if model_config.composite_mask and mask_img is not None and os.path.isfile(mask_img):
@@ -203,13 +210,14 @@ def predict():
               mask = np.expand_dims(mask,axis=-1)
               img_array = mask*np.array(img_array) + (1.0-mask)*np.array(orig_img)
               img_array = img_array.astype(np.uint8)
-              #img_array = np.where(mask, np.array(img_array), orig_img)
+              img_array = np.where(mask, np.array(img_array), orig_img)
           img = PIL.Image.fromarray(img_array, 'RGB')
           img.save(os.path.join(generated_images_dir, f'{img_name}.png'), 'PNG')
           np.save(os.path.join(dlatent_dir, f'{img_name}.npy'), dlatent)
 
       generator.reset_dlatents()
-  tf.get_variable_scope().reuse_variables()
+    #   tf.reset_default_graph()
+
   return f"Stored images in {generated_images_dir}"
 
 
