@@ -5,7 +5,7 @@ RUN apt-get update \
     && apt-get install -qy build-essential wget curl bzip2 ca-certificates \
                            git cmake libsm6 libxrender1 libfontconfig1 \
                            libprotobuf-dev libleveldb-dev libsnappy-dev \
-                           libhdf5-serial-dev protobuf-compiler \
+                           libhdf5-serial-dev protobuf-compiler imagemagick \
                            libgflags-dev libgoogle-glog-dev liblmdb-dev cpio \
                            libgl1-mesa-glx \
                            python3-pip locales \

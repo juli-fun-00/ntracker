@@ -80,6 +80,13 @@ function setPhotoWhileRecordingFromBlob(blob) {
     img.src = urlCreator.createObjectURL(blob)
 }
 
+function errorAndReload(msg, timeout) {
+    alert(msg);
+    setTimeout(() => { 
+        window.location.href = window.location.href 
+    }, timeout);
+}
+
 
 $(() => {
     // GLOBALS
@@ -110,10 +117,12 @@ $(() => {
 
     GazeCloudAPI.OnCamDenied = function () {
         console.log('camera access denied')
+        errorAndReload('Не удалось получить доступ к камере. Страница будет перезагружена через 10 секунд. Попробуйте еще раз.', 10000);
         stop_recording();
     }
     GazeCloudAPI.OnError = function (msg) {
         console.log('err: ' + msg)
+        errorAndReload('При калибрации возникла ошибка. Страница будет перезагружена через 10 секунд. Попробуйте еще раз.', 10000);
         stop_recording();
     }
 
@@ -142,6 +151,8 @@ $(() => {
         // осталавливаем запись и сессию записи
         stop_recording();
 
+        reloadTextVal = `Подождите несколько секунд, идет классификация по способу восприятия лиц...Это недолго. Результат появится под фотографией.`;
+        reloadText.innerHTML = reloadTextVal;
         $(reloadText).show();
 
         // отправяем classify запрос
@@ -156,10 +167,17 @@ $(() => {
                 setTimeout(() => { window.location.reload() }, timeLeft * 1000);
                 
                 setInterval(() => {
-                    timeLeft--;
-                    reloadTextVal = `Сброс в начало через ${timeLeft} сек...`;
-                    reloadText.innerHTML = reloadTextVal;
-                    console.log(`Осталось ${timeLeft} секунд до перезапуска`);
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        reloadTextVal = `Сброс в начало через ${timeLeft} сек...`;
+                        reloadText.innerHTML = reloadTextVal;
+                        console.log(`Осталось ${timeLeft} секунд до перезапуска`);
+                    } else {
+                        reloadTextVal = `Идет сброс в начальное состояние`;
+                        reloadText.innerHTML = reloadTextVal;
+                        console.log(`Пора перезапускаться`);
+                        window.location.href = window.location.href;
+                    }
                 }, 1000);
 
                 console.log("center_mass: ", result["center_mass"]);
@@ -170,17 +188,20 @@ $(() => {
             },
             () => {
                 console.log("--------- CLASSIFY request failed");
+                errorAndReload('Ошибка при классификации взгляда. Страница будет перезагружена через 30 секунд. Попробуйте еще раз.', 30000);
             }
         );
     }
 
     function calibCompleteActions(face_promise) {
         console.log('calibCompleteActions function')
+        $(reloadText).show();
         face_promise.then(
             () => {
                 console.log("face_promise.then сработал")
                 // результат нейронки отображаем пользователю
                 $(img).show();
+                $(reloadText).hide();
 
                 // начинаем запись
                 console.log("Recording START........")
@@ -190,6 +211,7 @@ $(() => {
             () => {
                 console.log("face_promise failed => ничего дальше не вызываем")
                 setInitialState()
+                errorAndReload('Ошибка при генерации фотографии. Страница будет перезагружена через 30 секунд. Попробуйте еще раз.', 30000);
             })
     }
 
@@ -200,7 +222,6 @@ $(() => {
 
         console.log("current uuid: ", current_id)
 
-
         let retryCount = 0;
 
         canvas.toBlob((blob) => {
@@ -208,11 +229,11 @@ $(() => {
                 console.log(`blob is null for some reason... retry count = ${retryCount}`)
                 if (retryCount >= 3) {
                     setInitialState();
+                    errorAndReload('Ошибка при отправке фотографии. Страница будет перезагружена через 15 секунд. Попробуйте еще раз.', 15000);
                 } else {
                     retryCount++;
                     setTimeout(takePicture, 1000);
                 }
-
                 return;
             }
             console.log('picture taken');
@@ -233,7 +254,7 @@ $(() => {
             GazeCloudAPI.OnCalibrationComplete = () => {
                 calibCompleteActions(face_promise)
             };
-        }, "image/jpeg", 0.6);
+        }, "image/jpeg", 0.9);
     }
 
     function start_calibrate() {
@@ -272,10 +293,10 @@ $(() => {
             } else if (!calibratingButtonPressed) {
                 const startCalibratingButton = document.querySelector("#_ButtonCalibrateId");
                 if (startCalibratingButton != null && !startCalibratingButton.disabled) {
+                    takePicture();
                     startCalibratingButton.click();
                     calibratingButtonPressed = true;
                     console.log("Click button within calibrating simulated");
-                    takePicture();
                 }
             }
         }
