@@ -116,36 +116,12 @@ def load_model_action():
 
   print("Loading ResNet Model:")
   ff_model = load_model(model_config.load_resnet)
-# 
+ 
   logging.info("Model loaded")
 
 
 @app.route('/predict/', methods=['GET', 'POST'])
 def predict():
-#   global perceptual_model
-#   global ff_model
-#   global generator
-#   global discriminator_network
-#   global perc_model
-
-#   tflib.init_tf()
-
-#   with dnnlib.util.open_url(model_config.model_url, cache_dir=config.cache_dir) as f:
-#       generator_network, discriminator_network, Gs_network = pickle.load(f)
-#   generator = Generator(Gs_network, model_config.batch_size, clipping_threshold=model_config.clipping_threshold, tiled_dlatent=model_config.tile_dlatents, model_res=model_config.model_res, randomize_noise=model_config.randomize_noise)
-
-#   if (model_config.use_lpips_loss > 0.00000001):
-#       with dnnlib.util.open_url(model_config.architecture, cache_dir=config.cache_dir) as f:
-#           perc_model =  pickle.load(f)
-#   perceptual_model = PerceptualModel(model_config, perc_model=perc_model, batch_size=model_config.batch_size)
-#   perceptual_model.build_perceptual_model(generator, discriminator_network)
-
-#   print("Loading ResNet Model:")
-#   ff_model = load_model(model_config.load_resnet)
-
-#   logging.info("Model loaded")
-
-
   src_dir = request.args.get('src_dir')
   generated_images_dir = request.args.get('generated_images_dir')
   dlatent_dir = request.args.get('dlatent_dir')
@@ -161,7 +137,6 @@ def predict():
 
   # Optimize (only) dlatents by minimizing perceptual loss between reference and generated images in feature space
   for images_batch in tqdm(split_to_batches(ref_images, model_config.batch_size), total=len(ref_images)//model_config.batch_size):
-#   for images_batch in split_to_batches(ref_images, model_config.batch_size):
       names = [os.path.splitext(os.path.basename(x))[0] for x in images_batch]
 
       perceptual_model.set_reference_images(images_batch)
@@ -216,7 +191,6 @@ def predict():
           np.save(os.path.join(dlatent_dir, f'{img_name}.npy'), dlatent)
 
       generator.reset_dlatents()
-    #   tf.reset_default_graph()
 
   return f"Stored images in {generated_images_dir}"
 
