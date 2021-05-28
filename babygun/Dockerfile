@@ -28,4 +28,6 @@ COPY .    /opt/babygun
 # set runnable
 WORKDIR /opt/babygun/
 EXPOSE 9080
-ENTRYPOINT ["python", "app.py"]
+# ENTRYPOINT ["python", "app.py"]
+# ENTRYPOINT ["python", "daemon.py"]
+ENTRYPOINT ["python", "server.py"]

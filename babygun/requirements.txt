@@ -77,3 +77,4 @@ Werkzeug==1.0.1
 wrapt==1.12.1
 yadisk==1.2.14
 zipp==3.4.1
+watchdog==2.1.2
