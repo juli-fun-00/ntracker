@@ -16,7 +16,7 @@ import logging
 from dataclasses import dataclass
 import tensorflow as tf
 
-from flask import Flask, request
+from flask import Flask, request, g
 
 app = Flask(__name__)
 
@@ -91,37 +91,35 @@ generator = None
 discriminator_network = None
 perc_model = None
 
-@app.before_first_request
-def load_model_action():
-  global perceptual_model
-  global ff_model
-  global generator
-  global discriminator_network
-  global perc_model
+def validate_app_context():
+  if 'perceptual_model' not in g:
+    os.makedirs(model_config.data_dir, exist_ok=True)
+    os.makedirs(model_config.mask_dir, exist_ok=True)
 
-  os.makedirs(model_config.data_dir, exist_ok=True)
-  os.makedirs(model_config.mask_dir, exist_ok=True)
+    # Initialize generator and perceptual model
+    tflib.init_tf()
+    with dnnlib.util.open_url(model_config.model_url, cache_dir=config.cache_dir) as f:
+        g.generator_network, g.discriminator_network, g.Gs_network = pickle.load(f)
+    g.generator = Generator(g.Gs_network, model_config.batch_size, clipping_threshold=model_config.clipping_threshold, tiled_dlatent=model_config.tile_dlatents, model_res=model_config.model_res, randomize_noise=model_config.randomize_noise)
 
-  # Initialize generator and perceptual model
-  tflib.init_tf()
-  with dnnlib.util.open_url(model_config.model_url, cache_dir=config.cache_dir) as f:
-      generator_network, discriminator_network, Gs_network = pickle.load(f)
-  generator = Generator(Gs_network, model_config.batch_size, clipping_threshold=model_config.clipping_threshold, tiled_dlatent=model_config.tile_dlatents, model_res=model_config.model_res, randomize_noise=model_config.randomize_noise)
+    if (model_config.use_lpips_loss > 0.00000001):
+        with dnnlib.util.open_url(model_config.architecture, cache_dir=config.cache_dir) as f:
+            g.perc_model =  pickle.load(f)
+    g.perceptual_model = PerceptualModel(model_config, perc_model=g.perc_model, batch_size=model_config.batch_size)
+    g.perceptual_model.build_perceptual_model(g.generator, g.discriminator_network)
 
-  if (model_config.use_lpips_loss > 0.00000001):
-      with dnnlib.util.open_url(model_config.architecture, cache_dir=config.cache_dir) as f:
-          perc_model =  pickle.load(f)
-  perceptual_model = PerceptualModel(model_config, perc_model=perc_model, batch_size=model_config.batch_size)
-  perceptual_model.build_perceptual_model(generator, discriminator_network)
-
-  print("Loading ResNet Model:")
-  ff_model = load_model(model_config.load_resnet)
- 
-  logging.info("Model loaded")
+    print("Loading ResNet Model:")
+    g.ff_model = load_model(model_config.load_resnet)
+    
+    logging.info("Model loaded")
 
 
 @app.route('/predict/', methods=['GET', 'POST'])
 def predict():
+  logging.info("Running PREDICT")
+  validate_app_context()
+  logging.info("App context ready")
+
   src_dir = request.args.get('src_dir')
   generated_images_dir = request.args.get('generated_images_dir')
   dlatent_dir = request.args.get('dlatent_dir')
@@ -139,11 +137,11 @@ def predict():
   for images_batch in tqdm(split_to_batches(ref_images, model_config.batch_size), total=len(ref_images)//model_config.batch_size):
       names = [os.path.splitext(os.path.basename(x))[0] for x in images_batch]
 
-      perceptual_model.set_reference_images(images_batch)
-      dlatents = ff_model.predict(preprocess_input(load_images(images_batch,image_size=model_config.resnet_image_size)))
-      generator.set_dlatents(dlatents)
+      g.perceptual_model.set_reference_images(images_batch)
+      dlatents = g.ff_model.predict(preprocess_input(load_images(images_batch,image_size=model_config.resnet_image_size)))
+      g.generator.set_dlatents(dlatents)
 
-      op = perceptual_model.optimize(generator.dlatent_variable, iterations=model_config.iterations, use_optimizer=model_config.optimizer)
+      op = g.perceptual_model.optimize(g.generator.dlatent_variable, iterations=model_config.iterations, use_optimizer=model_config.optimizer)
       pbar = tqdm(op, leave=False, total=model_config.iterations)
       vid_count = 0
       best_loss = None
@@ -153,13 +151,13 @@ def predict():
           pbar.set_description(" ".join(names) + ": " + "; ".join(["{} {:.4f}".format(k, v) for k, v in loss_dict.items()]))
           if best_loss is None or loss_dict["loss"] < best_loss:
               if best_dlatent is None or model_config.average_best_loss <= 0.00000001:
-                  best_dlatent = generator.get_dlatents()
+                  best_dlatent = g.generator.get_dlatents()
               else:
-                  best_dlatent = 0.25 * best_dlatent + 0.75 * generator.get_dlatents()
+                  best_dlatent = 0.25 * best_dlatent + 0.75 * g.generator.get_dlatents()
               if model_config.use_best_loss:
-                  generator.set_dlatents(best_dlatent)
+                  g.generator.set_dlatents(best_dlatent)
               best_loss = loss_dict["loss"]
-          generator.stochastic_clip_dlatents()
+          g.generator.stochastic_clip_dlatents()
           prev_loss = loss_dict["loss"]
       if not model_config.use_best_loss:
           best_loss = prev_loss
@@ -168,9 +166,9 @@ def predict():
 
       # Generate images from found dlatents and save them
       if model_config.use_best_loss:
-          generator.set_dlatents(best_dlatent)
-      generated_images = generator.generate_images()
-      generated_dlatents = generator.get_dlatents()
+          g.generator.set_dlatents(best_dlatent)
+      generated_images = g.generator.generate_images()
+      generated_dlatents = g.generator.get_dlatents()
       for img_array, dlatent, img_path, img_name in zip(generated_images, generated_dlatents, images_batch, names):
           mask_img = None
           if model_config.composite_mask and model_config.face_mask:
@@ -190,7 +188,7 @@ def predict():
           img.save(os.path.join(generated_images_dir, f'{img_name}.png'), 'PNG')
           np.save(os.path.join(dlatent_dir, f'{img_name}.npy'), dlatent)
 
-      generator.reset_dlatents()
+      g.generator.reset_dlatents()
 
   return f"Stored images in {generated_images_dir}"
 
