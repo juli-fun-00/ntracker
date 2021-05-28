@@ -3,7 +3,8 @@ import os
 import utils
 import argparse
 import numpy as np
-
+import requests
+import time
 
 def merge(a, b, babygun_path, savefolder, uuid):
     # return a
@@ -18,14 +19,19 @@ def merge(a, b, babygun_path, savefolder, uuid):
     cv2.imwrite(f'{merge_folder}/raw_images/b.jpg', b)
 
     print("executing align...")
+    start_align = time.time()
     command_align = f"python align_images.py {merge_folder}/raw_images/ {merge_folder}/aligned_images/"
     utils.execute(command=command_align, workdir=babygun_path)
+    align_took = time.time() - start_align
+    print(f'align took {align_took} seconds')
 
     print("executing merge...")
-    command_merge = f"python3 encode_images.py --early_stopping=False --lr=0.25 --batch_size=2 --iterations=12 " \
-                    f"--output_video=False {merge_folder}/aligned_images {merge_folder}/generated_images " \
-                    f"{merge_folder}/latent_representations"
-    utils.execute(command=command_merge, workdir=babygun_path)
+    start_merge = time.time()
+    r = requests.get(f"http://babygan:9080{merge_folder}")
+    print(r.text)
+    merge_took = time.time() - start_merge
+    print(f'merge took {merge_took} seconds')
+
     result_name = np.random.choice(["a", "b"])
 
     orig_file_path = f'{merge_folder}/generated_images/{result_name}_01.png'
