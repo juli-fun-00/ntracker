@@ -17,6 +17,8 @@ import utils
 import math
 from pydantic import BaseModel
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 class Points(BaseModel):
     points: List[int]
@@ -320,6 +322,8 @@ make_folders()
 if not os.path.exists(SAVE_FOLDER):
     os.makedirs(SAVE_FOLDER, exist_ok=True)
     print(f"Create path {SAVE_FOLDER} because it didn't exist")
+
+Instrumentator().instrument(app).expose(app)
 
 # запускаем сервер
 #uvicorn.run(app, host="0.0.0.0")

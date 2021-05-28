@@ -469,7 +469,7 @@ a++;
 </div>
 <div id="infoWaitForCalibration"
     style="height: 100%; width: 100%; position: fixed;left: 0px;top: 0%; display: none ;opacity: 0.9;background-color: black;z-index: 999; ">
-    <h1 align="center" style="color: white;"> Подождите, идет калибрация...</h1>
+    <h1 align="center" style="color: white;"> Подождите, идет калибровка...</h1>
     <div id="clickinfoid"
         style="position: fixed; height:100%; width:100%; left: 0%;top: 50%;text-align: center; display:block">
         <p></p>

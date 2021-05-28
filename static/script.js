@@ -80,12 +80,6 @@ function setPhotoWhileRecordingFromBlob(blob) {
     img.src = urlCreator.createObjectURL(blob)
 }
 
-function errorAndReload(msg, timeout) {
-    alert(msg);
-    setTimeout(() => { 
-        window.location.href = window.location.href 
-    }, timeout);
-}
 
 
 $(() => {
@@ -101,6 +95,7 @@ $(() => {
     const img = document.querySelector("#screenshot img");
     const text = document.querySelector("#person-class");
     const reloadText = document.querySelector("#recording");
+    const loadingIndicator = document.querySelector("#loading");
 
     function setInitialState() {
         console.log("Setting initial state")
@@ -111,6 +106,7 @@ $(() => {
         $(reloadText).hide();
         $(text).hide()
         $(video).hide();
+        $(loadingIndicator).hide();
     }
 
     setInitialState()
@@ -118,12 +114,10 @@ $(() => {
     GazeCloudAPI.OnCamDenied = function () {
         console.log('camera access denied')
         errorAndReload('Не удалось получить доступ к камере. Страница будет перезагружена через 10 секунд. Попробуйте еще раз.', 10000);
-        stop_recording();
     }
     GazeCloudAPI.OnError = function (msg) {
         console.log('err: ' + msg)
-        errorAndReload('При калибрации возникла ошибка. Страница будет перезагружена через 10 секунд. Попробуйте еще раз.', 10000);
-        stop_recording();
+        errorAndReload('При калибровке возникла ошибка. Страница будет перезагружена через 10 секунд. Попробуйте еще раз.', 10000);
     }
 
     function drawCameraFrameOnCanvas() {
@@ -139,6 +133,16 @@ $(() => {
         GazeRecorderAPI.StopRec();
         GazeCloudAPI.StopEyeTracking();
         isCalibrating = false;
+    }
+
+    function errorAndReload(msg, timeout) {
+        stop_recording();
+        $(reloadText).addClass('error');
+        reloadText.innerHTML = msg;
+        $(reloadText).show();
+        setTimeout(() => { 
+            window.location.href = window.location.href 
+        }, timeout);
     }
 
     function stopAndUpload() {
@@ -196,12 +200,15 @@ $(() => {
     function calibCompleteActions(face_promise) {
         console.log('calibCompleteActions function')
         $(reloadText).show();
+        $(loadingIndicator).show();
         face_promise.then(
             () => {
                 console.log("face_promise.then сработал")
                 // результат нейронки отображаем пользователю
+                $(loadingIndicator).hide();
+                // $(reloadText).hide();
                 $(img).show();
-                $(reloadText).hide();
+                reloadText.innerHTML = "Посмотрите на это лицо в течение 10 секунд, а я проанализирую ваш взгляд.";
 
                 // начинаем запись
                 console.log("Recording START........")
